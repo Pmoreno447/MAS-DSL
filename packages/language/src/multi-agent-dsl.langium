@@ -77,7 +77,7 @@ None:
 // modelo es un STRING libre validado contra una lista curada por proveedor en
 // models.json (ver Validator y CompletionProvider).
 ProviderType returns string:
-    'openai' | 'anthropic' | 'ollama' | 'google';
+    'openai' | 'anthropic' | 'ollama' | 'google_genai';
 
 fragment ProviderModel:
     'provider' provider=ProviderType

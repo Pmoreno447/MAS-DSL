@@ -248,9 +248,7 @@ node packages/cli/bin/cli.js generate examples/cvReviewer/cvReviewer.mad -d ./ex
 python3.11 -m venv venv
 source venv/bin/activate
 
-# 5. Generar el requirements.txt automáticamente
-pip install pipreqs
-pipreqs . --force
+# 5. Instalar el requirements.txt
 pip install -r requirements.txt
 
 # 6. Ejecutar

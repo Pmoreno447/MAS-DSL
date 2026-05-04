@@ -51,7 +51,7 @@ el texto final pulido, manteniendo el tono y estructura originales.
     }
 
     agent Critic {
-        provider google
+        provider google_genai
         model "gemini-2.5-flash"
         profile Critic
         stateContext draft

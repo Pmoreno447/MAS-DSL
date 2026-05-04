@@ -8,7 +8,7 @@
 //   anthropic → https://platform.claude.com/docs/en/about-claude/models/overview
 //   google    → https://ai.google.dev/gemini-api/docs/models
 //   ollama    → https://ollama.com/library
-export const PROVIDERS = ['openai', 'anthropic', 'google', 'ollama'] as const;
+export const PROVIDERS = ['openai', 'anthropic', 'google_genai', 'ollama'] as const;
 export type Provider = typeof PROVIDERS[number];
 
 export const MODELS: Record<Provider, readonly string[]> = {
@@ -45,7 +45,7 @@ export const MODELS: Record<Provider, readonly string[]> = {
         'claude-opus-4-5',
         'claude-opus-4-1'
     ],
-    google: [
+    google_genai: [
         'gemini-2.5-pro',
         'gemini-2.5-flash',
         'gemini-2.5-flash-lite',

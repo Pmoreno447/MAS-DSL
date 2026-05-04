@@ -7,22 +7,22 @@ import { resolveMessageConfig } from '../templates/reducers.js'
 import { toPythonType } from '../util.js';
 
 // ─── Generator ────────────────────────────────────────────────────────────────
+// Genera un paquete `state/` con tres archivos:
+//   - state/state.py     → solo el TypedDict
+//   - state/reducers.py  → reducers / nodo de resumen (si la estrategia los pide)
+//   - state/__init__.py  → re-exporta para que `from state import State, ...` siga
+//                          siendo válido para el resto de generators.
 export function stateGenerator(model: LLMMultiAgentSystem, filePath: string, destination: string | undefined): string {
     const data = extractDestinationAndName(filePath, destination);
-    const generatedFilePath = `${path.join(data.destination, 'state')}.py`;
+    const stateDir = path.join(data.destination, 'state');
 
-    // Lógica para obtener los imports y funciones necesarias en el state
-    const message = resolveMessageConfig(model.envirement.messages)
+    const message = resolveMessageConfig(model.envirement.messages);
 
-    const fileNode = expandToNode
-`
-# state.py
+    const stateFile = expandToNode
+`# state.py
 from typing import Annotated, Optional
 from typing_extensions import TypedDict
-from langgraph.graph.message import add_messages
-${message.import}
-
-${message.functionBefore}
+${message.stateImports}
 
 class State(TypedDict):
     # Mensajes
@@ -32,13 +32,44 @@ class State(TypedDict):
 ${joinToNode(model.envirement.attributes, attribute =>
 `    ${attribute.name}: Optional[${toPythonType(attribute.type)}]`
 , { appendNewLineIfNotEmpty: true })}
-
-${message.functionAfter}
 `.appendNewLineIfNotEmpty();
 
-    if (!fs.existsSync(data.destination)) {
-        fs.mkdirSync(data.destination, { recursive: true });
+    const hasReducers = message.reducersBody.trim().length > 0;
+    const reducersFile = hasReducers
+        ? expandToNode`# reducers.py
+${message.reducersImports}
+
+${message.reducersBody}
+`.appendNewLineIfNotEmpty()
+        : null;
+
+    const reducerExports = message.exports;
+    const initFile = expandToNode`# __init__.py
+from state.state import State
+${reducerExports.length > 0 ? `from state.reducers import ${reducerExports.join(', ')}` : ''}
+
+__all__ = [${['State', ...reducerExports].map(n => `"${n}"`).join(', ')}]
+`.appendNewLineIfNotEmpty();
+
+    if (!fs.existsSync(stateDir)) {
+        fs.mkdirSync(stateDir, { recursive: true });
     }
-    fs.writeFileSync(generatedFilePath, toString(fileNode));
-    return generatedFilePath;
+    // Si quedaba un state.py de una generación previa con la estructura antigua,
+    // lo eliminamos para evitar el clash entre módulo y paquete.
+    const legacyStateFile = path.join(data.destination, 'state.py');
+    if (fs.existsSync(legacyStateFile) && fs.statSync(legacyStateFile).isFile()) {
+        fs.rmSync(legacyStateFile);
+    }
+
+    fs.writeFileSync(path.join(stateDir, 'state.py'), toString(stateFile));
+    fs.writeFileSync(path.join(stateDir, '__init__.py'), toString(initFile));
+    if (reducersFile) {
+        fs.writeFileSync(path.join(stateDir, 'reducers.py'), toString(reducersFile));
+    } else {
+        // Limpia un reducers.py obsoleto si la estrategia cambió a "none".
+        const stale = path.join(stateDir, 'reducers.py');
+        if (fs.existsSync(stale)) fs.rmSync(stale);
+    }
+
+    return stateDir;
 }

@@ -78,7 +78,7 @@ export function resolveApiKeyEnvVar(agent: Agent): string | null {
     switch (agent.provider) {
         case 'openai':    return 'OPENAI_API_KEY';
         case 'anthropic': return 'ANTHROPIC_API_KEY';
-        case 'google':    return 'GOOGLE_API_KEY';
+        case 'google_genai':    return 'GOOGLE_API_KEY';
         case 'ollama':    return 'OLLAMA_BASE_URL';
     }
 }

@@ -1,0 +1,28 @@
+{
+    environment Test06 {
+        trim {
+            maxMessages 3
+        }
+        persistence inMemorySave
+    }
+
+    profile asistente description
+    "
+Asistente conversacional amigable
+    "
+
+    agent chatBot {
+        provider openai
+        model "gpt-4o"
+        profile asistente
+        description "Chatbot"
+
+    }
+
+    layered Grafo {
+        layer chat level 1 agent chatBot
+    }
+
+    from START to Grafo
+    from Grafo to END
+}

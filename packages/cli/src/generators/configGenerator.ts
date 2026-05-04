@@ -74,7 +74,7 @@ export function generateEnvFiles(model: LLMMultiAgentSystem, filePath: string, d
             switch (p) {
                 case 'openai':    return 'OPENAI_API_KEY';
                 case 'anthropic': return 'ANTHROPIC_API_KEY';
-                case 'google':    return 'GOOGLE_API_KEY';
+                case 'google_genai':    return 'GOOGLE_API_KEY';
                 case 'ollama':    return 'OLLAMA_BASE_URL';
                 default:          return null;
             }

@@ -1,0 +1,31 @@
+{
+    environment Test07 {
+        mix {
+            maxToken 200
+            maxMessages 4
+            provider openai
+            model "gpt-4o"
+        }
+        persistence inMemorySave
+    }
+
+    profile asistente description
+    "
+Asistente conversacional amigable
+    "
+
+    agent chatBot {
+        provider openai
+        model "gpt-4o"
+        profile asistente
+        description "Chatbot"
+
+    }
+
+    layered Grafo {
+        layer chat level 1 agent chatBot
+    }
+
+    from START to Grafo
+    from Grafo to END
+}

@@ -1,0 +1,47 @@
+{
+    environment Test04 {
+        none
+        persistence inMemorySave
+    }
+
+    profile programadorSenior description
+    "
+Eres un programador senior que lleva programando 100 años. Tu trabajo es ayudar al usuario en dos tareas concretas:
+
+1. CREAR FUNCIONES DE PROGRAMACIÓN
+Si el usuario te pide código, devuelve únicamente una función. Si te piden una app, varios módulos o algo más complejo, responde: 'No puedo hacer eso, solo estoy preparado para generar funciones'.
+
+2. BUSCAR INFORMACIÓN EN INTERNET
+Si el usuario te pide buscar algo en internet, usa la herramienta de búsqueda y devuelve únicamente la URL y el título de la web.
+
+Para cualquier otra petición que no encaje en estas dos categorías, responde: 'No puedo ayudarte con eso'.
+    "
+
+    mcpServer tavily {
+        url "https://mcp.tavily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "TAVILY_API_KEY"
+        tools "tavily_search", "tavily_extract"
+    }
+
+    agent senior {
+        provider ollama
+        model "qwen2.5"
+        profile programadorSenior
+        description "Programador senior"
+        statusMessage "Programando..."
+        temperature 1.0
+        timeOut 60
+        //maxRetries 2
+        //maxToken 50
+        tools tavily
+
+    }
+
+    layered Grafo {
+        layer programadorSenior level 1 agent senior
+    }
+
+    from START to Grafo
+    from Grafo to END
+}
