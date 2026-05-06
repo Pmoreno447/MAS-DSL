@@ -1,0 +1,17 @@
+shippingHelper (envío)
+Hola, llevo 10 días esperando mi pedido ORD-1234 y el seguimiento no se actualiza desde la semana pasada. Creo que se ha perdido. ¿Podéis hacer algo?
+
+paymentHelper (pago)
+Buenas, me han cobrado dos veces el pedido ORD-5678. Quiero que me devolváis el dinero del cargo duplicado cuanto antes, por favor.
+
+productHelper (producto)
+Hola, acabo de recibir el pedido ORD-9090 y el producto ha llegado roto, la pantalla está partida. Me gustaría que me enviarais uno nuevo en buen estado.
+
+generalHelper (consulta general)
+Hola, solo quería saber cuándo llegará aproximadamente mi pedido ORD-2468. Gracias.
+
+Caso inválido — orderId impar (no existe)
+Hola, mi pedido ORD-123 no ha llegado todavía y quiero una solución ya.
+
+Caso inválido — mensaje no serio
+jajaja hola probando probando, ¿qué tal estáis? mandadme un meme porfa

@@ -12,3 +12,5 @@ syntaxes/
 venv/
 __pycache__/
 .claude/
+.env
+.langgraph_api/

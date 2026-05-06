@@ -49,7 +49,14 @@ docs/
 │   ├── 001-compilacionUnificada.md
 │   ├── 002-summarize&mixReducer.md
 │   ├── 003-scopeProviderAttributes.md
-│   └── 004-generadorEdges.md
+│   ├── 004-generadorEdges.md
+│   ├── 005-modelosPorProvider.md
+│   ├── 006-eliminacionEndPointTool.md
+│   ├── 007-toolNameEnMcpTool.md
+│   ├── 008-failFastMcpToolLookup.md
+│   ├── 009-baseModelComoToolYWhileLoop.md
+│   ├── 010-estadoPorSubgrafo.md
+│   └── 011-summarize&mixUpdate.md
 └── prototipos/
     ├── cvReviewer/
     │   ├── cvReviewer.mad
@@ -85,9 +92,16 @@ Esquema del metamodelo y explicación de qué es cada clase.
 Registros de decisiones arquitectónicas relevantes tomadas durante el desarrollo. Cada ADR sigue la estructura contexto–decisión–consecuencias:
 
 - **`001-compilacionUnificada.md`** — Justifica la unificación de `langium:generate` y `tsc` en un único comando `npm run build`, y la decisión de no aplicar `npm audit fix --force` para las vulnerabilidades de `lodash`.
-- **`002-summarize&mixReducer.md`** — Explica por qué el nodo de resumen de mensajes se genera pero no se conecta al grafo: el mecanismo solo tiene sentido en grafos cíclicos, y la posición es ambigua en grafos con múltiples estructuras de comunicación.
+- **`002-summarize&mixReducer.md`** *(deprecado, sustituido por ADR 011)* — Explica por qué el nodo de resumen de mensajes se genera pero no se conecta al grafo: el mecanismo solo tiene sentido en grafos cíclicos, y la posición es ambigua en grafos con múltiples estructuras de comunicación.
 - **`003-scopeProviderAttributes.md`** — Documenta la creación de un `ScopeProvider` personalizado en Langium para que las referencias `stateContext` y `stateUpdate` de los agentes puedan resolver los `Attribute` definidos dentro de `Environment`.
 - **`004-generadorEdges.md`** — Justifica la separación del generador de edges en un subdirectorio `generators/edges/` con un módulo por estructura de comunicación, anticipando el crecimiento por bifurcaciones y HumanInTheLoop.
+- **`005-modelosPorProvider.md`** — Justifica la separación del par `provider`/`model` en la gramática y la externalización del catálogo de modelos a `models.json`, validado en runtime, para evitar que la lista quede desfasada al ritmo de los proveedores.
+- **`006-eliminacionEndPointTool.md`** — Explica por qué se elimina `EndPointTool` del metamodelo: HTTP es demasiado abierto para capturarse declarativamente sin reproducir el protocolo entero en Langium, y el caso de uso queda cubierto por `PythonTool` y `MCPTool`.
+- **`007-toolNameEnMcpTool.md`** — Documenta la introducción del campo `tools` en `MCPServer` para seleccionar tools concretas de un servidor MCP, evitando bindear catálogos enteros que disparan coste por tokens y degradan la precisión de function-calling.
+- **`008-failFastMcpToolLookup.md`** — Justifica que `mcpClients.py` resuelva las tools al importarse y aborte con un mensaje accionable (qué tool falta y cuáles sí están disponibles) en lugar de propagar un `StopIteration` opaco en tiempo de ejecución.
+- **`009-baseModelComoToolYWhileLoop.md`** — Documenta el patrón de exponer el `BaseModel` de salida estructurada como una tool más y unificar el bucle modelo↔tools en un único while-loop dentro del nodo, sorteando la incompatibilidad entre `bind_tools` y `with_structured_output`.
+- **`010-estadoPorSubgrafo.md`** — Justifica generar un único `state.py` compartido por todos los subgrafos en lugar de un `TypedDict` por estructura de comunicación: el aislamiento ya lo aporta el modelo y la complejidad de proyectar campos entre subgrafos no se compensa en código generado.
+- **`011-summarize&mixUpdate.md`** — Sustituye al ADR 002. Coloca el nodo de resumen al final del grafo mediante un *conditional edge* basado en conteo de tokens (`tiktoken`), corrigiendo el problema que aparecía en sistemas con checkpointer al resumir antes de que existiera el contenido del turno.
 
 ### `prototipos/` — Prototipos de validación del metamodelo
 

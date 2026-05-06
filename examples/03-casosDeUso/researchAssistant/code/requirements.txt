@@ -1,0 +1,10 @@
+langchain
+langchain-core
+langchain-mcp-adapters
+langchain-openai
+langgraph
+langgraph-cli[inmem]
+langsmith
+pydantic
+python-dotenv
+typing-extensions
