@@ -251,3 +251,11 @@ esta base.
 **Referencias en el repositorio.**
 
 - Tag: `v0.5`
+
+
+## v6 — Refinamiento Final del DSL
+- [] Enviorement -> Context.
+- [] GameRule + Environment -> Tools + Prompt.
+- [] Agents -> Clase Padre -> Agente/Coordinador.
+- [] Mecanismos de Message como tool??
+- [] Generar estructura descentralizada.
