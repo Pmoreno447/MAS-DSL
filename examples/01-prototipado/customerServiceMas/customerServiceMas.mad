@@ -1,5 +1,5 @@
 {
-    environment customerService{
+    context customerService{
         // Es válido el pedido?
         attribute isValid type boolean description "Si el mensaje del cliente es real(es en serio y no te está tomando el pelo) y válido (el id del pedido existe) será True, en caso contrario False."
 

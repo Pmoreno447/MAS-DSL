@@ -61,11 +61,11 @@ DB_URI=os.getenv("DB_URI")`
 export function generateEnvFiles(model: LLMMultiAgentSystem, filePath: string, destination: string | undefined): void {
     const data = extractDestinationAndName(filePath, destination);
 
-    const messageEnvVars = resolveMessageEnvVars(model.envirement.messages);
-    const messageConfigVars = resolveMessageConfigVars(model.envirement.messages);
+    const messageEnvVars = resolveMessageEnvVars(model.context.messages);
+    const messageConfigVars = resolveMessageConfigVars(model.context.messages);
 
-    const persistenceEnvVar = resolvePersistenceEnvVar(model.envirement.persistence);
-    const persistenceConfigVar = resolvePersistenceConfigVar(model.envirement.persistence);
+    const persistenceEnvVar = resolvePersistenceEnvVar(model.context.persistence);
+    const persistenceConfigVar = resolvePersistenceConfigVar(model.context.persistence);
 
     const coordinatorKeys = model.communicationStructures
         .filter(isCentralized)

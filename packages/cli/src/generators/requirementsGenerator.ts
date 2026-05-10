@@ -45,7 +45,7 @@ function hasMcpTools(model: LLMMultiAgentSystem): boolean {
 }
 
 function persistenceRequirements(model: LLMMultiAgentSystem): string[] {
-    const persistence = model.envirement.persistence;
+    const persistence = model.context.persistence;
     if (isPostgreSaver(persistence)) {
         return ['langgraph-checkpoint-postgres', 'psycopg[binary]'];
     }
@@ -65,7 +65,7 @@ export function generateRequirements(model: LLMMultiAgentSystem, filePath: strin
     for (const r of collectProviderRequirements(model)) requirements.add(r);
     if (hasMcpTools(model)) requirements.add('langchain-mcp-adapters');
     for (const r of persistenceRequirements(model)) requirements.add(r);
-    if (isSummarize(model.envirement.messages)) {
+    if (isSummarize(model.context.messages)) {
         // El reducer de summarize usa ChatOpenAI + tiktoken (ver templates/reducers.ts).
         requirements.add('langchain-openai');
         requirements.add('tiktoken');

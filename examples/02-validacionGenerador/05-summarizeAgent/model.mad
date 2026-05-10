@@ -1,5 +1,5 @@
 {
-    environment Test05 {
+    context Test05 {
         summarize {
             maxToken 150
             provider openai

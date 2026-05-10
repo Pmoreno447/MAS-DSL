@@ -2,7 +2,7 @@ grammar MultiAgentDsl
 
 entry LLMMultiAgentSystem:
     '{'
-        envirement=Environment
+        context=Context
         profiles+=Profile*
         tools+=(PythonTool | MCPServer )*
         agents+=Agent*
@@ -11,8 +11,6 @@ entry LLMMultiAgentSystem:
     '}';
 
 // Toda esta sección define la parte del entorno en que se encuentra el MAAS.
-// GameRule: Debe revisarse
-
 AttributeType returns string:
     'int' | 'string' | 'boolean';
 
@@ -27,16 +25,12 @@ PostgreSaver:
 MongoDBSaver:
     {infer MongoDBSaver} 'MongoDB';
 
-Environment:
-    'environment' name = ID '{'
-        gamerules+=GameRule*
+Context:
+    'context' name = ID '{'
         attributes+=Attribute*
         messages=(Trim | Mix | None | Summarize)
         'persistence' persistence=( InMemorySaver | PostgreSaver | MongoDBSaver)
     '}';
-
-GameRule:
-    'gamerule' id = ID 'description' description = STRING;
 
 // TODO: soporte para literales en atributos. Pendiente de implementar en el generador
 // (stateGenerator.ts y agentsGenerator.ts ignoran actualmente este campo).

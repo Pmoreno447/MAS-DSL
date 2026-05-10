@@ -1,5 +1,5 @@
 {
-    environment McpTools {
+    context McpTools {
         attribute bool type boolean description "Es solo un ejemplo, este grafo no tiene ningun sentido al ser ejecutado, solo son pruebas para ver la generacion de mezcla de subgrafos"
         attribute x type int description "Es solo un ejemplo, este grafo no tiene ningun sentido al ser ejecutado, solo son pruebas para ver la generacion de mezcla de subgrafos"
         attribute y type string description "Es solo un ejemplo, este grafo no tiene ningun sentido al ser ejecutado, solo son pruebas para ver la generacion de mezcla de subgrafos"

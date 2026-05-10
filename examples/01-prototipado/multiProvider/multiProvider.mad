@@ -1,5 +1,5 @@
 {
-    environment MultiProvider {
+    context MultiProvider {
         attribute topic type string description "Tema sobre el que se investiga"
         attribute research type string description "Notas de investigación recopiladas"
         attribute draft type string description "Borrador del artículo"

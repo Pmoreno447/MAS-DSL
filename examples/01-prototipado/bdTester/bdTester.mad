@@ -1,6 +1,6 @@
     
 {
-    environment bdTester {
+    context bdTester {
         none
         persistence inMemorySave
     }

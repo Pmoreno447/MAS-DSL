@@ -1,5 +1,5 @@
 {
-    environment ContentProcessing {
+    context ContentProcessing {
         attribute content type string description "Contenido a procesar"
         attribute summary type string description "Resumen del contenido generado"
         attribute score type int description "Puntuación de calidad del 0 al 10"

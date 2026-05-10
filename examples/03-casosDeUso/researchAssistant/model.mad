@@ -1,5 +1,5 @@
 {
-    environment researchAssistant {
+    context researchAssistant {
         attribute topic type string description "Tema sobre el que el usuario quiere investigar."
         attribute searchSummary type string description "Resumen estructurado de los hallazgos obtenidos de la búsqueda web."
         attribute sources type string description "Lista de URLs y títulos de las fuentes consultadas, separadas por saltos de línea."

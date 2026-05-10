@@ -16,7 +16,7 @@ export function generateLangGraphJson(model: LLMMultiAgentSystem, filePath: stri
     const data = extractDestinationAndName(filePath, destination);
     const generatedFilePath = path.join(data.destination, 'langgraph.json');
 
-    const checkpointer = buildCheckpointerField(model.envirement.persistence);
+    const checkpointer = buildCheckpointerField(model.context.persistence);
 
     const config: Record<string, unknown> = {
         dependencies: ['.'],
