@@ -3,7 +3,7 @@ import { expandToNode, toString } from 'langium/generate';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { extractDestinationAndName, collectApiKeyEnvVars, collectMcpApiKeyEnvVars, isDb } from '../util.js';
-import { isTrim, isMix, isSummarize, isCentralized, type Trim, type Mix, type None, type Summarize } from 'multi-agent-dsl-language';
+import { isSummarizer } from 'multi-agent-dsl-language';
 import { type InMemorySaver, type PostgreSaver, type MongoDBSaver } from 'multi-agent-dsl-language';
 
 // Defaults razonables para variables de entorno que no son secretos sino
@@ -13,28 +13,20 @@ const ENV_DEFAULTS: Record<string, string> = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function resolveMessageEnvVars(message: Trim | Mix | None | Summarize | undefined): string {
-    if (isTrim(message)) {
-        return `MAX_MESSAGES=${message.maxMessages}`;
-    } else if (isSummarize(message)) {
-        return `MAX_TOKENS=${message.maxToken}`;
-    } else if (isMix(message)) {
-        return `MAX_MESSAGES=${message.maxMessages}
-MAX_TOKENS=${message.maxToken}`;
-    }
-    return '';
+function resolveMessageEnvVars(model: LLMMultiAgentSystem): string {
+    const lines: string[] = [];
+    if (model.context.maxMessages !== undefined) lines.push(`MAX_MESSAGES=${model.context.maxMessages}`);
+    const summarizer = model.actors.find(isSummarizer);
+    if (summarizer?.tokenTrigger !== undefined) lines.push(`MAX_TOKENS=${summarizer.tokenTrigger}`);
+    return lines.join('\n');
 }
 
-function resolveMessageConfigVars(message: Trim | Mix | None | Summarize | undefined): string {
-    if (isTrim(message)) {
-        return `MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))`;
-    } else if (isSummarize(message)) {
-        return `MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))`;
-    } else if (isMix(message)) {
-        return `MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))`;
-    }
-    return '';
+function resolveMessageConfigVars(model: LLMMultiAgentSystem): string {
+    const lines: string[] = [];
+    if (model.context.maxMessages !== undefined) lines.push(`MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))`);
+    const summarizer = model.actors.find(isSummarizer);
+    if (summarizer?.tokenTrigger !== undefined) lines.push(`MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))`);
+    return lines.join('\n');
 }
 
 function resolvePersistenceEnvVar(persistenceType: InMemorySaver | PostgreSaver | MongoDBSaver): string{
@@ -61,31 +53,16 @@ DB_URI=os.getenv("DB_URI")`
 export function generateEnvFiles(model: LLMMultiAgentSystem, filePath: string, destination: string | undefined): void {
     const data = extractDestinationAndName(filePath, destination);
 
-    const messageEnvVars = resolveMessageEnvVars(model.context.messages);
-    const messageConfigVars = resolveMessageConfigVars(model.context.messages);
+    const messageEnvVars = resolveMessageEnvVars(model);
+    const messageConfigVars = resolveMessageConfigVars(model);
 
     const persistenceEnvVar = resolvePersistenceEnvVar(model.context.persistence);
     const persistenceConfigVar = resolvePersistenceConfigVar(model.context.persistence);
 
-    const coordinatorKeys = model.communicationStructures
-        .filter(isCentralized)
-        .map(c => c.coordinator.provider)
-        .map((p): string | null => {
-            switch (p) {
-                case 'openai':    return 'OPENAI_API_KEY';
-                case 'anthropic': return 'ANTHROPIC_API_KEY';
-                case 'google_genai':    return 'GOOGLE_API_KEY';
-                case 'ollama':    return 'OLLAMA_BASE_URL';
-                default:          return null;
-            }
-        })
-        .filter((k): k is string => k !== null);
-
     const apiKeys = [
         ...new Set([
-            ...collectApiKeyEnvVars(model.agents),
+            ...collectApiKeyEnvVars(model.actors),
             ...collectMcpApiKeyEnvVars(model.tools),
-            ...coordinatorKeys,
         ])
     ];
     const envApiKeys = apiKeys.map(k => `${k}=`).join('\n');

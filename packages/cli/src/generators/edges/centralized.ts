@@ -105,7 +105,7 @@ export function generateCentralizedSubgraph(centralized: Centralized, destinatio
     const subgraphDir = path.join(destination, 'subgraph');
     const filePath = path.join(subgraphDir, `${centralized.name}.py`);
 
-    const coordinator = centralized.coordinator;
+    const coordinator = centralized.coordinator.ref!;
     const agents = centralized.agents.map(a => a.ref!);
     const stateFields = collectStateFields(agents);
     const memberNames = agents.map(a => a.name.toLowerCase());

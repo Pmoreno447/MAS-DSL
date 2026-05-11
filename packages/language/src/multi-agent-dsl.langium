@@ -5,7 +5,7 @@ entry LLMMultiAgentSystem:
         context=Context
         profiles+=Profile*
         tools+=(PythonTool | MCPServer )*
-        agents+=Agent*
+        actors+=(Agent | Summarizer | Coordinator)*
         communicationStructures+=(Layered | SharedMessagePool | Centralized | Decentralized)*
         transitions+=CommTransition*
     '}';
@@ -28,7 +28,7 @@ MongoDBSaver:
 Context:
     'context' name = ID '{'
         attributes+=Attribute*
-        messages=(Trim | Mix | None | Summarize)
+        ('maxMessages' maxMessages=INT)?
         'persistence' persistence=( InMemorySaver | PostgreSaver | MongoDBSaver)
     '}';
 
@@ -42,30 +42,6 @@ Context:
 Attribute:
     'attribute' name = ID 'type' type = AttributeType 'description' description = STRING /* (Literal)? */;
 
-type Message = Trim | Mix | None | Summarize;
-
-Trim:
-    'trim' '{' 
-        'maxMessages' maxMessages = INT
-    '}';
-
-Mix:
-    'mix' '{'
-        'maxToken' maxToken = INT 
-        'maxMessages' maxMessages = INT
-        ProviderModel
-    '}';
-
-Summarize:
-    'summarize' '{' 
-        'maxToken' maxToken = INT
-        ProviderModel
-    '}';
-
-None:
-    {infer None} 'none';
-
-
 // A partir de ahora, se define todo lo relacionado con los agentes individuales:
 // El proveedor es estático (impacta a la generación: API keys, imports). El
 // modelo es un STRING libre validado contra una lista curada por proveedor en
@@ -77,11 +53,23 @@ fragment ProviderModel:
     'provider' provider=ProviderType
     'model' model=STRING;
 
-Agent:
-    'agent' name=ID '{'
-        //Necesario
+type Actor = Agent | Summarizer | Coordinator;
+
+fragment ActorBase:
+    name=ID '{'
         ProviderModel
         'profile' profile=[Profile]
+        ('temperature' temperature = FLOAT)?;
+
+
+
+Summarizer:
+    'summarizer' ActorBase
+        ('tokenTrigger' tokenTrigger=INT)?
+    '}';
+
+Agent:
+    'agent' ActorBase
 
         //Recomendable
         ('description' description=STRING)?
@@ -90,11 +78,14 @@ Agent:
 
         // Opcional
         ('statusMessage' statusMessage = STRING)?
-        ('temperature' temperature = FLOAT)?
         ('maxToken' maxToken = INT)?
         ('timeOut' timeOut = INT)?
         ('maxRetries' maxRetries = INT)?
         ('tools' tools+=[Tool:ID] (',' tools+=[Tool:ID])*)?
+    '}';
+
+Coordinator: 
+    'coordinator' ActorBase
     '}';
 
 Profile:
@@ -148,19 +139,9 @@ Layered:
         layers+=Layer+
     '}';
 
-Coordinator:
-    'coordinator' name=ID '{'
-        //Necesario
-        ProviderModel
-        'profile' profile=[Profile]
-
-        // Opcional
-        ('temperature' temperature = FLOAT)?
-    '}';
-
 Centralized:
     'centralized' name=ID '{'
-        coordinator=Coordinator
+        'coordinator' coordinator=[Coordinator]
         Agents
     '}';
 

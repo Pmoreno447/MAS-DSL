@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { URI } from 'langium';
-import type { Agent, CommunicationStructure, Tool } from 'multi-agent-dsl-language';
+import type { Actor, Agent, CommunicationStructure, Tool } from 'multi-agent-dsl-language';
 import { isKnownProvider, isMCPServer } from 'multi-agent-dsl-language';
 import { isInMemorySaver, type InMemorySaver, type PostgreSaver, type MongoDBSaver } from 'multi-agent-dsl-language';
 
@@ -73,7 +73,7 @@ export function generateNodeName(agent: Agent): string {
     return `node${agentPascal}`;
 }
 
-export function resolveApiKeyEnvVar(agent: Agent): string | null {
+export function resolveApiKeyEnvVar(agent: Actor): string | null {
     if (!isKnownProvider(agent.provider)) return null;
     switch (agent.provider) {
         case 'openai':    return 'OPENAI_API_KEY';
@@ -83,7 +83,7 @@ export function resolveApiKeyEnvVar(agent: Agent): string | null {
     }
 }
 
-export function collectApiKeyEnvVars(agents: Agent[]): string[] {
+export function collectApiKeyEnvVars(agents: Actor[]): string[] {
     const keys = new Set<string>();
     for (const agent of agents) {
         const key = resolveApiKeyEnvVar(agent);

@@ -16,7 +16,7 @@ export function stateGenerator(model: LLMMultiAgentSystem, filePath: string, des
     const data = extractDestinationAndName(filePath, destination);
     const stateDir = path.join(data.destination, 'state');
 
-    const message = resolveMessageConfig(model.context.messages);
+    const message = resolveMessageConfig(model);
 
     const stateFile = expandToNode
 `# state.py

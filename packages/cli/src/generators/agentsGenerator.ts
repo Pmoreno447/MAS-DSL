@@ -1,5 +1,5 @@
 import type { LLMMultiAgentSystem, Agent } from 'multi-agent-dsl-language';
-import { isMCPServer, isPythonTool } from 'multi-agent-dsl-language';
+import { isMCPServer, isPythonTool, isAgent } from 'multi-agent-dsl-language';
 import { expandToNode, toString } from 'langium/generate';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -11,7 +11,7 @@ function isUsingTools(model: LLMMultiAgentSystem): boolean {
 }
 
 function hasAnyStatusMessage(model: LLMMultiAgentSystem): boolean {
-    return model.agents.some(a => !!a.statusMessage);
+    return model.actors.filter(isAgent).some(a => !!a.statusMessage);
 }
 
 function streamWriterImport(model: LLMMultiAgentSystem): string {
@@ -147,16 +147,17 @@ ${terminalBlock}        for tc in response.tool_calls:
 export function agentsGenerator(model: LLMMultiAgentSystem, filePath: string, destination: string | undefined): string {
     const data = extractDestinationAndName(filePath, destination);
     const generatedFilePath = `${path.join(data.destination, 'agents')}.py`;
+    const agents = model.actors.filter(isAgent);
 
     const messageImports = isUsingTools(model)
         ? 'from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage'
         : 'from langchain_core.messages import SystemMessage, HumanMessage';
 
-    const hasStructuredOutputs = model.agents.some(
+    const hasStructuredOutputs = agents.some(
         agent => agent.stateUpdate && agent.stateUpdate.length > 0
     );
 
-    const usesOllama = model.agents.some(agent => agent.provider === 'ollama');
+    const usesOllama = agents.some(agent => agent.provider === 'ollama');
 
     const mcpToolNames = model.tools.filter(isMCPServer).flatMap(s => s.tools);
     const mcpImport = mcpToolNames.length > 0
@@ -169,16 +170,16 @@ export function agentsGenerator(model: LLMMultiAgentSystem, filePath: string, de
 
     const profileNames = model.profiles.map(p => p.name.toUpperCase()).join(', ');
 
-    const structuredOutputs = model.agents
+    const structuredOutputs = agents
         .map(generateStructuredOutput)
         .filter(s => s !== '')
         .join('\n\n');
 
-    const models = model.agents
+    const models = agents
         .map(generateModel)
         .join('\n');
 
-    const nodes = model.agents
+    const nodes = agents
         .map(generateNode)
         .join('\n\n');
 

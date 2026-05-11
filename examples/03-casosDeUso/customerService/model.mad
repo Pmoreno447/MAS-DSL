@@ -16,7 +16,6 @@
 
         attribute decision type string description "Decisión tomada para resolver el pedido"
 
-        none
         persistence inMemorySave
     }
 
@@ -241,7 +240,13 @@ REGLAS ESTRICTAS:
         stateContext orderId, issueDescription, preferredSolution, orderStatus, productID, productBatch, trackingNumber, paymentAmount, paymentStatus
         stateUpdate decision
         tools getDeliveryEstimate
-    }  
+    } 
+
+    coordinator problemOrchestrator {
+        provider openai
+        model "gpt-5-nano"
+        profile problemOrchestrator
+    }
 
     layered ValidationGraph {
         layer ValidatorLayer level 1 agent Validator
@@ -256,11 +261,7 @@ REGLAS ESTRICTAS:
     }
 
     centralized specializedAssistants {
-        coordinator problemOrchestrator {
-            provider openai
-            model "gpt-5-nano"
-            profile problemOrchestrator
-        }
+        coordinator problemOrchestrator
         agents shippingHelper, paymentHelper, productHelper, generalHelper
     }
 

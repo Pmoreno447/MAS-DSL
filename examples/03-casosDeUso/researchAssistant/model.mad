@@ -5,7 +5,6 @@
         attribute sources type string description "Lista de URLs y títulos de las fuentes consultadas, separadas por saltos de línea."
         attribute report type string description "Informe final redactado a partir de los hallazgos."
 
-        none
         persistence inMemorySave
     }
 

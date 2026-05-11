@@ -1,4 +1,5 @@
-import { isTrim, isMix, isSummarize, type Trim, type Mix, type None, type Summarize } from 'multi-agent-dsl-language';
+import type { LLMMultiAgentSystem } from 'multi-agent-dsl-language';
+import { isSummarizer } from 'multi-agent-dsl-language';
 
 // ─── Interfaz ────────────────────────────────────────────────────────────────
 //
@@ -148,7 +149,9 @@ const TRIM: MessageConfig = {
     exports: ['trim_messages_reducer'],
 };
 
-function buildSummarize(s: Summarize): MessageConfig {
+import type { Summarizer } from 'multi-agent-dsl-language';
+
+function buildSummarize(s: Summarizer): MessageConfig {
     return {
         stateImports: 'from langgraph.graph.message import add_messages',
         field: 'messages: Annotated[list, add_messages]',
@@ -158,12 +161,12 @@ function buildSummarize(s: Summarize): MessageConfig {
     };
 }
 
-function buildMix(m: Mix): MessageConfig {
+function buildMix(s: Summarizer): MessageConfig {
     return {
         stateImports: 'from state.reducers import trim_messages_reducer\nfrom config import MAX_MESSAGES',
         field: 'messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]',
         reducersImports: `${SUMMARY_IMPORTS_BASE}\n${TRIM_REDUCER_IMPORTS}\nfrom config import MAX_TOKENS`,
-        reducersBody: `${TRIM_REDUCER_BODY}\n\n${buildSummaryNode(m.provider, m.model)}`,
+        reducersBody: `${TRIM_REDUCER_BODY}\n\n${buildSummaryNode(s.provider, s.model)}`,
         exports: ['trim_messages_reducer', 'should_summarize', 'summary_node'],
     };
 }
@@ -178,10 +181,12 @@ const NONE: MessageConfig = {
 
 // ─── Resolver ─────────────────────────────────────────────────────────────────
 
-export function resolveMessageConfig(message: Trim | Mix | None | Summarize | undefined): MessageConfig {
-    if (isTrim(message))      return TRIM;
-    if (isSummarize(message)) return buildSummarize(message);
-    if (isMix(message))       return buildMix(message);
+export function resolveMessageConfig(model: LLMMultiAgentSystem): MessageConfig {
+    const summarizer = model.actors.find(isSummarizer);
+    const hasTrim = model.context.maxMessages !== undefined;
+    if (summarizer && hasTrim) return buildMix(summarizer);
+    if (summarizer)            return buildSummarize(summarizer);
+    if (hasTrim)               return TRIM;
     return NONE;
 }
 
@@ -195,10 +200,8 @@ export interface TerminalNodeInjection {
     stateImports: string[];
 }
 
-export function resolveTerminalNode(
-    message: Trim | Mix | None | Summarize | undefined
-): TerminalNodeInjection | null {
-    if (isSummarize(message) || isMix(message)) {
+export function resolveTerminalNode(model: LLMMultiAgentSystem): TerminalNodeInjection | null {
+    if (model.actors.some(isSummarizer)) {
         return {
             routerFn: 'should_summarize',
             nodeName: 'summary_node',
