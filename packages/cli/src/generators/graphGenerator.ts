@@ -126,10 +126,10 @@ export function generateGraph(model: LLMMultiAgentSystem, filePath: string, dest
         .map(t => `builder.add_edge(START, "${t.target!.ref!.name.toLowerCase()}")`)
         .join('\n');
 
-    const terminal = resolveTerminalNode(model.envirement.messages);
+    const terminal = resolveTerminalNode(model);
     const { routers, edges } = generateRouters(model, terminal);
 
-    const apiKeys = collectApiKeyEnvVars(model.agents).filter(k => k !== 'OLLAMA_BASE_URL');
+    const apiKeys = collectApiKeyEnvVars(model.actors).filter(k => k !== 'OLLAMA_BASE_URL');
     const apiKeyImports = apiKeys.length > 0 ? `from config import ${apiKeys.join(', ')}` : '';
     const apiKeyEnvAssignments = apiKeys.map(k => `os.environ["${k}"] = ${k}`).join('\n');
 

@@ -1,5 +1,5 @@
 {
-    environment Test04 {
+    context Test04 {
         none
         persistence inMemorySave
     }

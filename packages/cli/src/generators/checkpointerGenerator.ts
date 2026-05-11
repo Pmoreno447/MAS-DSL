@@ -8,7 +8,7 @@ import { checkpointer } from '../templates/dbBlock.js'
 // ─── Generator ────────────────────────────────────────────────────────────────
 
 export function generateCheckpointer(model: LLMMultiAgentSystem, filePath: string, destination: string | undefined): void {
-    const persistence = model.envirement.persistence;
+    const persistence = model.context.persistence;
 
     const data = extractDestinationAndName(filePath, destination);
 

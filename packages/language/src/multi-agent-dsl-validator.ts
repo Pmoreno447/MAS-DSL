@@ -1,5 +1,5 @@
 import type { AstNode, ValidationAcceptor, ValidationChecks } from 'langium';
-import type { Agent, Coordinator, Mix, MultiAgentDslAstType, Summarize } from './generated/ast.js';
+import type { Agent, Coordinator, MultiAgentDslAstType, Summarizer } from './generated/ast.js';
 import type { MultiAgentDslServices } from './multi-agent-dsl-module.js';
 import { modelsFor } from './models.js';
 
@@ -9,8 +9,7 @@ export function registerValidationChecks(services: MultiAgentDslServices) {
     const checks: ValidationChecks<MultiAgentDslAstType> = {
         Agent: validator.checkAgentModel,
         Coordinator: validator.checkCoordinatorModel,
-        Mix: validator.checkMixModel,
-        Summarize: validator.checkSummarizeModel,
+        Summarizer: validator.checkSummarizerModel,
     };
     registry.register(checks, validator);
 }
@@ -40,11 +39,7 @@ export class MultiAgentDslValidator {
         checkProviderModel(coordinator, 'coordinator', accept);
     }
 
-    checkMixModel(mix: Mix, accept: ValidationAcceptor): void {
-        checkProviderModel(mix, 'mix', accept);
-    }
-
-    checkSummarizeModel(summarize: Summarize, accept: ValidationAcceptor): void {
-        checkProviderModel(summarize, 'summarize', accept);
+    checkSummarizerModel(summarizer: Summarizer, accept: ValidationAcceptor): void {
+        checkProviderModel(summarizer, 'summarizer', accept);
     }
 }

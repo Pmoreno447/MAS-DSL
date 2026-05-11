@@ -8,8 +8,8 @@ export class MultiAgentDslScopeProvider extends DefaultScopeProvider {
         // buscamos los atributos dentro del Environment del sistema.
         if (context.property === 'stateContext' || context.property === 'stateUpdate' || context.property === 'attribute') {
             const system = AstUtils.getContainerOfType(context.container, isLLMMultiAgentSystem) as LLMMultiAgentSystem | undefined;
-            if (system?.envirement) {
-                const descriptions = system.envirement.attributes.map(attr =>
+            if (system?.context) {
+                const descriptions = system.context.attributes.map(attr =>
                     this.descriptions.createDescription(attr, attr.name)
                 );
                 return new MapScope(descriptions);

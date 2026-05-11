@@ -1,5 +1,5 @@
-import type { LLMMultiAgentSystem, Agent } from 'multi-agent-dsl-language';
-import { isMCPServer, isPythonTool } from 'multi-agent-dsl-language';
+import type { LLMMultiAgentSystem, Agent, Decentralized } from 'multi-agent-dsl-language';
+import { isMCPServer, isPythonTool, isAgent, isDecentralized } from 'multi-agent-dsl-language';
 import { expandToNode, toString } from 'langium/generate';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -11,7 +11,7 @@ function isUsingTools(model: LLMMultiAgentSystem): boolean {
 }
 
 function hasAnyStatusMessage(model: LLMMultiAgentSystem): boolean {
-    return model.agents.some(a => !!a.statusMessage);
+    return model.actors.filter(isAgent).some(a => !!a.statusMessage);
 }
 
 function streamWriterImport(model: LLMMultiAgentSystem): string {
@@ -20,13 +20,42 @@ function streamWriterImport(model: LLMMultiAgentSystem): string {
         : '';
 }
 
-function generateStructuredOutput(agent: Agent): string {
-    if (!agent.stateUpdate || agent.stateUpdate.length === 0) return '';
+function getDecentralizedCluster(agent: Agent, model: LLMMultiAgentSystem): Decentralized | null {
+    for (const s of model.communicationStructures) {
+        if (isDecentralized(s) && s.agents.some(ref => ref.ref === agent)) return s;
+    }
+    return null;
+}
+
+function clusterMemberNodeNames(cluster: Decentralized): string[] {
+    return cluster.agents.map(ref => ref.ref!).map(a => a.name.toLowerCase());
+}
+
+function hasAnyDecentralizedAgent(model: LLMMultiAgentSystem): boolean {
+    return model.actors.filter(isAgent).some(a => getDecentralizedCluster(a, model) !== null);
+}
+
+function generateStructuredOutput(agent: Agent, model: LLMMultiAgentSystem): string {
+    const cluster = getDecentralizedCluster(agent, model);
+    const isDecentral = cluster !== null;
+    const hasStateUpdate = !!(agent.stateUpdate && agent.stateUpdate.length > 0);
+
+    if (!isDecentral && !hasStateUpdate) return '';
 
     const className = agent.name.charAt(0).toUpperCase() + agent.name.slice(1) + 'Output';
-    const fields = agent.stateUpdate.map((ref) =>
-        `    ${ref.ref!.name}: ${toPythonType(ref.ref!.type)} = Field(description="${ref.ref!.description}")`
-    ).join('\n');
+    const fields: string[] = [];
+
+    if (isDecentral) {
+        const members = clusterMemberNodeNames(cluster!);
+        const literal = [...members.map(n => `"${n}"`), '"END"'].join(', ');
+        fields.push(`    next: Literal[${literal}] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")`);
+    }
+
+    if (hasStateUpdate) {
+        for (const ref of agent.stateUpdate!) {
+            fields.push(`    ${ref.ref!.name}: ${toPythonType(ref.ref!.type)} = Field(description="${ref.ref!.description}")`);
+        }
+    }
 
     const toolNames = collectAgentToolNames(agent);
     const hasTools = toolNames.length > 0;
@@ -34,10 +63,10 @@ function generateStructuredOutput(agent: Agent): string {
         ? `    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""\n`
         : '';
 
-    return `class ${className}(BaseModel):\n${docstring}${fields}`;
+    return `class ${className}(BaseModel):\n${docstring}${fields.join('\n')}`;
 }
 
-function generateModel(agent: Agent): string {
+function generateModel(agent: Agent, model: LLMMultiAgentSystem): string {
     const variableName = 'model' + agent.name.charAt(0).toUpperCase() + agent.name.slice(1);
     const className = agent.name.charAt(0).toUpperCase() + agent.name.slice(1) + 'Output';
 
@@ -54,9 +83,11 @@ function generateModel(agent: Agent): string {
 
     const toolNames = collectAgentToolNames(agent);
     const hasTools = toolNames.length > 0;
-    const hasStructured = !!(agent.stateUpdate && agent.stateUpdate.length > 0);
+    const isDecentral = getDecentralizedCluster(agent, model) !== null;
+    // En decentralized el schema con `next` debe generarse aunque no haya stateUpdate.
+    const hasStructured = !!(agent.stateUpdate && agent.stateUpdate.length > 0) || isDecentral;
 
-    // BaseModel-as-tool: cuando hay tools y stateUpdate, el schema de salida
+    // BaseModel-as-tool: cuando hay tools y schema estructurado, el schema de salida
     // se bindea como una tool más. El modelo lo invoca cuando ha "terminado"
     // y el while-loop del nodo extrae los args como salida estructurada.
     if (hasTools && hasStructured) {
@@ -70,7 +101,7 @@ function generateModel(agent: Agent): string {
     return line;
 }
 
-function generateNode(agent: Agent): string {
+function generateNode(agent: Agent, model: LLMMultiAgentSystem): string {
     const agentPascal = agent.name.charAt(0).toUpperCase() + agent.name.slice(1);
     const nodeName = generateNodeName(agent);
     const modelName = `model${agentPascal}`;
@@ -86,13 +117,82 @@ ${agent.stateContext.map(ref => `            ${ref.ref!.name}: {state.get("${ref
 
     const toolNames = collectAgentToolNames(agent);
     const hasTools = toolNames.length > 0;
-    const hasStructured = !!(agent.stateUpdate && agent.stateUpdate.length > 0);
+    const hasStateUpdate = !!(agent.stateUpdate && agent.stateUpdate.length > 0);
+    const cluster = getDecentralizedCluster(agent, model);
+    const isDecentral = cluster !== null;
+    const hasStructured = hasStateUpdate || isDecentral;
 
     const statusLine = agent.statusMessage
         ? `    get_stream_writer()({"status": "${agent.statusMessage}"})\n`
         : '';
 
-    // Rama sin tools: patrón síncrono clásico.
+    // Anotación de retorno para nodos decentralized: Command[Literal[<miembros>, "__end__"]]
+    const gotoTypeLiteral = isDecentral
+        ? [...clusterMemberNodeNames(cluster!).map(n => `"${n}"`), '"__end__"'].join(', ')
+        : '';
+    const returnAnnotation = isDecentral ? ` -> Command[Literal[${gotoTypeLiteral}]]` : '';
+
+    // ── Rama decentralized sin tools ─────────────────────────────────────────
+    if (isDecentral && !hasTools) {
+        const updateLines: string[] = [];
+        if (hasStateUpdate) {
+            for (const ref of agent.stateUpdate!) {
+                updateLines.push(`        "${ref.ref!.name}": result.${ref.ref!.name}`);
+            }
+        }
+        const updateBlock = updateLines.length > 0
+            ? `{\n${updateLines.join(',\n')}\n    }`
+            : `{}`;
+
+        return `def ${nodeName}(state: State)${returnAnnotation}:
+    """${description}"""
+${statusLine}    result = ${modelName}.invoke(
+        [SystemMessage(content=${profileName})]
+        + state["messages"]
+        ${contextFields}
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update=${updateBlock})`;
+    }
+
+    // ── Rama decentralized con tools ─────────────────────────────────────────
+    // Schema-como-tool obligatorio (tool_choice="required") con `next` siempre y
+    // los campos de stateUpdate si los hay. Al invocarse, cerramos el loop y
+    // emitimos Command(goto, update).
+    if (isDecentral && hasTools) {
+        const stateUpdateExtraction = hasStateUpdate
+            ? agent.stateUpdate!.map(ref =>
+                `                    "${ref.ref!.name}": tc["args"]["${ref.ref!.name}"]`
+              ).join(',\n')
+            : '';
+        const updateBody = hasStateUpdate
+            ? `{\n                    "messages": [response],\n${stateUpdateExtraction}\n                }`
+            : `{"messages": [response]}`;
+
+        return `async def ${nodeName}(state: State)${returnAnnotation}:
+    """${description}"""
+    messages = (
+        [SystemMessage(content=${profileName})]
+        + state["messages"]
+        ${contextFields}
+    )
+    while True:
+        response = await ${modelName}.ainvoke(messages)
+        messages.append(response)
+        for tc in response.tool_calls:
+            if tc["name"] == "${className}":
+                goto = END if tc["args"]["next"] == "END" else tc["args"]["next"]
+                return Command(goto=goto, update=${updateBody})
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))`;
+    }
+
+    // ── Rama sin tools (no decentralized): patrón síncrono clásico. ──────────
     if (!hasTools) {
         const returnBlock = hasStructured
             ? `return {\n${agent.stateUpdate!.map(ref =>
@@ -110,9 +210,7 @@ ${statusLine}    result = ${modelName}.invoke(
     ${returnBlock}`;
     }
 
-    // Rama con tools: async + while-loop.
-    // Si además hay stateUpdate, el schema (ClassOutput) se bindea como tool
-    // terminal: cuando el modelo la invoca, extraemos args como salida estructurada.
+    // ── Rama con tools (no decentralized): async + while-loop. ──────────────
     const terminalBlock = hasStructured
         ? `        for tc in response.tool_calls:
             if tc["name"] == "${className}":
@@ -147,16 +245,18 @@ ${terminalBlock}        for tc in response.tool_calls:
 export function agentsGenerator(model: LLMMultiAgentSystem, filePath: string, destination: string | undefined): string {
     const data = extractDestinationAndName(filePath, destination);
     const generatedFilePath = `${path.join(data.destination, 'agents')}.py`;
+    const agents = model.actors.filter(isAgent);
 
     const messageImports = isUsingTools(model)
         ? 'from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage'
         : 'from langchain_core.messages import SystemMessage, HumanMessage';
 
-    const hasStructuredOutputs = model.agents.some(
+    const hasDecentralized = hasAnyDecentralizedAgent(model);
+    const hasStructuredOutputs = hasDecentralized || agents.some(
         agent => agent.stateUpdate && agent.stateUpdate.length > 0
     );
 
-    const usesOllama = model.agents.some(agent => agent.provider === 'ollama');
+    const usesOllama = agents.some(agent => agent.provider === 'ollama');
 
     const mcpToolNames = model.tools.filter(isMCPServer).flatMap(s => s.tools);
     const mcpImport = mcpToolNames.length > 0
@@ -169,17 +269,17 @@ export function agentsGenerator(model: LLMMultiAgentSystem, filePath: string, de
 
     const profileNames = model.profiles.map(p => p.name.toUpperCase()).join(', ');
 
-    const structuredOutputs = model.agents
-        .map(generateStructuredOutput)
+    const structuredOutputs = agents
+        .map(a => generateStructuredOutput(a, model))
         .filter(s => s !== '')
         .join('\n\n');
 
-    const models = model.agents
-        .map(generateModel)
+    const models = agents
+        .map(a => generateModel(a, model))
         .join('\n');
 
-    const nodes = model.agents
-        .map(generateNode)
+    const nodes = agents
+        .map(a => generateNode(a, model))
         .join('\n\n');
 
     // Dict de despacho de tools para el while-loop en nodos async.
@@ -191,6 +291,9 @@ export function agentsGenerator(model: LLMMultiAgentSystem, filePath: string, de
         ? `_tools_by_name = {t.name: t for t in [${allToolNames.join(', ')}]}`
         : '';
 
+    const decentralizedImports = hasDecentralized
+        ? 'from langgraph.types import Command\nfrom langgraph.graph import END\nfrom typing import Literal'
+        : '';
 
     const fileNode = expandToNode`
 # agents.py
@@ -199,6 +302,7 @@ from prompt import ${profileNames}
 from state import State
 from langchain.chat_models import init_chat_model
 ${streamWriterImport(model)}
+${decentralizedImports}
 ${usesOllama ? 'from config import OLLAMA_BASE_URL' : ''}
 ${hasStructuredOutputs ? 'from pydantic import BaseModel, Field' : ''}
 ${mcpImport}

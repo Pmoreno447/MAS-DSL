@@ -1,5 +1,5 @@
-import type { LLMMultiAgentSystem, Agent } from 'multi-agent-dsl-language';
-import { isMCPServer, isCentralized, isPostgreSaver, isMongoDBSaver, isSummarize } from 'multi-agent-dsl-language';
+import type { LLMMultiAgentSystem } from 'multi-agent-dsl-language';
+import { isMCPServer, isPostgreSaver, isMongoDBSaver, isSummarizer } from 'multi-agent-dsl-language';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { extractDestinationAndName } from '../util.js';
@@ -28,13 +28,7 @@ function providerRequirement(provider: string): string | null {
 }
 
 function collectProviderRequirements(model: LLMMultiAgentSystem): string[] {
-    const providers = new Set<string>();
-    for (const agent of model.agents as Agent[]) {
-        providers.add(agent.provider);
-    }
-    for (const comm of model.communicationStructures) {
-        if (isCentralized(comm)) providers.add(comm.coordinator.provider);
-    }
+    const providers = new Set(model.actors.map(a => a.provider));
     return [...providers]
         .map(providerRequirement)
         .filter((r): r is string => r !== null);
@@ -45,7 +39,7 @@ function hasMcpTools(model: LLMMultiAgentSystem): boolean {
 }
 
 function persistenceRequirements(model: LLMMultiAgentSystem): string[] {
-    const persistence = model.envirement.persistence;
+    const persistence = model.context.persistence;
     if (isPostgreSaver(persistence)) {
         return ['langgraph-checkpoint-postgres', 'psycopg[binary]'];
     }
@@ -65,8 +59,7 @@ export function generateRequirements(model: LLMMultiAgentSystem, filePath: strin
     for (const r of collectProviderRequirements(model)) requirements.add(r);
     if (hasMcpTools(model)) requirements.add('langchain-mcp-adapters');
     for (const r of persistenceRequirements(model)) requirements.add(r);
-    if (isSummarize(model.envirement.messages)) {
-        // El reducer de summarize usa ChatOpenAI + tiktoken (ver templates/reducers.ts).
+    if (model.actors.some(isSummarizer)) {
         requirements.add('langchain-openai');
         requirements.add('tiktoken');
     }

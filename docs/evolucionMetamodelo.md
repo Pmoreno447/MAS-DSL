@@ -24,7 +24,8 @@ se conservan en [`prototipos/`](./prototipos/).
 | v2      | Histórica  | Local (no versionada)         | Propuesta basada en componentes de comportamiento         |
 | v3      | Histórica  | Repositorio (tag `v0.3`)      | Fusión de estructuras de comunicación con tools y estado  |
 | v4      | Histórica | Repositorio (tag `v0.4`)  | Integración estado–agente y personalización de nodos      |
-| v5      | **Actual** | Repositorio (tag `v0.5`)  | Integración de bifurcaciones, literales y mejor sintaxis de las estructuras de comunicación     |
+| v5      | Histórica | Repositorio (tag `v0.5`)  | Integración de bifurcaciones, literales y mejor sintaxis de las estructuras de comunicación     |
+| v6      | **Actual** | Repositorio (tag `v0.6`)  | Refactorización de varios conceptos (Gamerules, Enviorement y Messages), además de soporte para la estructura centralized en el generador de código.    |
 
 > **Nota sobre v1 y v2:** las dos primeras iteraciones se desarrollaron en
 > local antes de versionar el proyecto en Git, por lo que no existen como
@@ -251,3 +252,22 @@ esta base.
 **Referencias en el repositorio.**
 
 - Tag: `v0.5`
+
+
+## v6 — Refinamiento conceptual del DSL
+
+**Objetivo.** Alinear la terminología y la estructura del metamodelo con los conceptos que realmente se están modelando, eliminando abstracciones heredadas que no encajaban con la semántica de los sistemas generados. Esta versión no introduce nuevas capacidades funcionales, sino que consolida el diseño eliminando fricciones conceptuales detectadas durante el desarrollo del generador y la validación con ejemplos reales.
+
+**Cambios respecto a v5.**
+
+- **`Environment` renombrado a `Context`.** El término `Environment` evocaba el entorno de ejecución de un sistema reactivo o robótico, que no es la semántica que se pretende modelar. Lo que el DSL necesita en este punto es un bloque que declare el estado compartido del grafo LangGraph: los atributos que los agentes leen y escriben, la estrategia de gestión de mensajes y la persistencia. El nombre `Context` refleja mejor ese rol. El cambio es un renombrado puro con impacto mínimo en el generador.
+
+- **`GameRule` y `Environment` absorbidos por `Tool` y `Profile`.** Las `GameRule` se concibieron en v1 como un mecanismo para expresar restricciones sobre el comportamiento del sistema. Sin embargo, en la práctica las restricciones de comportamiento se modelan de dos formas más naturales: mediante el prompt del agente (`Profile`), que establece las reglas en lenguaje natural, o mediante las propias herramientas (`Tool`), cuya lógica interna impide o condiciona las acciones del agente de forma programática. Un ejemplo ilustrativo: en un sistema de navegación en laberinto, si el agente intenta moverse hacia una pared, la herramienta correspondiente rechaza la acción; el agente percibe el entorno únicamente a través de las herramientas que se le proporcionan. Con este encuadre, `GameRule` y `Environment` no aportan valor semántico independiente, por lo que se eliminan del metamodelo.
+
+- **Jerarquía de actores: `Actor` como clase padre abstracta.** Hasta v5, `Agent` era la única entidad que representaba un nodo del grafo, y `Coordinator` se trataba de forma ad hoc en el generador de la estructura `Centralized`. En v6 se introduce `Actor` como clase padre abstracta que agrupa los atributos comunes a cualquier entidad que participe como nodo en el grafo: nombre, proveedor, modelo y temperatura. De `Actor` heredan tres entidades concretas: `Agent` (el agente genérico con herramientas, referencias al estado y configuración avanzada), `Coordinator` (el nodo orquestador de la estructura `Centralized`, con un conjunto reducido de atributos) y `Summarizer` (el nodo encargado de la reducción del historial de mensajes). Esta jerarquía refleja con más precisión el modelo de ejecución de LangGraph y elimina el acoplamiento implícito que existía entre `Agent` y el rol de coordinador.
+
+- **Mecanismo de `Summarizer` integrado en `Context`.** La gestión del historial de mensajes se reorganiza. El recorte por número de mensajes (`trim`) pasa a ser un campo opcional de `Context` mediante el atributo `maxMessages`: si está presente, se activa el reducer de *trimming*; si no, el historial crece sin límite. El nodo de resumen se modela ahora como una entidad `Summarizer` dentro de la jerarquía de `Actor`. Si el modelo declara un `Summarizer` y además `maxMessages` está activo, el generador combina ambos mecanismos; si solo está uno de los dos, aplica únicamente el que corresponda. Mediante restricción OCL se limita a un único `Summarizer` por modelo, ya que múltiples nodos de resumen sobre el mismo estado de mensajes generarían conflictos en el reducer.
+
+**Referencias en el repositorio.**
+
+- Tag: `v0.6`

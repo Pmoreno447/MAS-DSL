@@ -16,7 +16,7 @@ export function stateGenerator(model: LLMMultiAgentSystem, filePath: string, des
     const data = extractDestinationAndName(filePath, destination);
     const stateDir = path.join(data.destination, 'state');
 
-    const message = resolveMessageConfig(model.envirement.messages);
+    const message = resolveMessageConfig(model);
 
     const stateFile = expandToNode
 `# state.py
@@ -29,7 +29,7 @@ class State(TypedDict):
     ${message.field}
 
     # Atributos
-${joinToNode(model.envirement.attributes, attribute =>
+${joinToNode(model.context.attributes, attribute =>
 `    ${attribute.name}: Optional[${toPythonType(attribute.type)}]`
 , { appendNewLineIfNotEmpty: true })}
 `.appendNewLineIfNotEmpty();

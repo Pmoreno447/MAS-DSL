@@ -1,5 +1,5 @@
 {
-    environment Reclutamiento {
+    context Reclutamiento {
         // Criterios para evaluar el cvc
         attribute candidateName type string description "Nombre del candidato"
         attribute candidateEmail type string description "Email del candidato"
