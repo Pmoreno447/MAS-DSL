@@ -1,0 +1,123 @@
+{
+    context knowledgeTriageSystem {
+        attribute userQuestion type string description "Pregunta original del usuario"
+        attribute domain type string description "Dominio detectado de la pregunta: science, history, o general"
+        attribute answer type string description "Respuesta final elaborada para el usuario"
+
+        persistence inMemorySave
+    }
+
+    // Classifier: lee la pregunta y decide con su criterio especializado a qué experto derivar.
+    // Solo él puede evaluar si la pregunta es científica, histórica o general con suficiente precisión.
+    profile ClassifierProfile description
+    "
+Eres un agente clasificador de preguntas. Tu única tarea es leer la pregunta del usuario
+en `userQuestion` y determinar qué tipo de conocimiento requiere para ser respondida.
+
+Establece `domain` con uno de estos valores:
+- 'science': si la pregunta trata sobre ciencia, tecnología, física, biología, química, etc.
+- 'history': si la pregunta trata sobre historia, fechas, personajes históricos, civilizaciones, etc.
+- 'general': si la pregunta es de cultura general o no encaja claramente en ninguna categoría.
+
+Después, transfiere el control al agente adecuado según el dominio:
+- Si `domain` es 'science' → transfiere a ScienceExpert
+- Si `domain` es 'history' → transfiere a HistoryExpert
+- Si `domain` es 'general' → transfiere a GeneralExpert
+    "
+
+    // ScienceExpert: tiene conocimiento profundo de ciencia. Si detecta que la pregunta
+    // también tiene una dimensión histórica relevante, puede decidir derivar a HistoryExpert.
+    // Esa evaluación requiere expertise científico que un clasificador externo no tendría.
+    profile ScienceExpertProfile description
+    "
+Eres un experto en ciencia y tecnología. Lee la pregunta del usuario en `userQuestion`
+y responde con una explicación científica clara y precisa.
+
+Si al analizar la pregunta detectas que para darle una respuesta completa y de calidad
+es imprescindible añadir contexto histórico relevante (por ejemplo, el descubrimiento de
+una ley, la evolución de una teoría, o el contexto de un experimento clave), entonces
+transfiere el control a HistoryExpert indicándole que complemente tu respuesta científica.
+
+Si tu respuesta científica es suficiente por sí sola, establece `answer` con tu respuesta
+completa y responde con FINISH.
+    "
+
+    // HistoryExpert: tiene conocimiento profundo de historia. Si detecta que la pregunta
+    // tiene una dimensión científica que él no puede cubrir bien, puede derivar a ScienceExpert.
+    profile HistoryExpertProfile description
+    "
+Eres un experto en historia y humanidades. Lee la pregunta del usuario en `userQuestion`
+y responde con una explicación histórica detallada y contextualizada.
+
+Si al analizar la pregunta detectas que para darle una respuesta completa y de calidad
+es imprescindible añadir contexto científico o técnico que está fuera de tu área
+(por ejemplo, el funcionamiento de una tecnología histórica o los principios físicos
+de un descubrimiento), entonces transfiere el control a ScienceExpert indicándole
+que complemente tu respuesta histórica.
+
+Si tu respuesta histórica es suficiente por sí sola, establece `answer` con tu respuesta
+completa y responde con FINISH.
+    "
+
+    // GeneralExpert: maneja todo lo demás. Puede redirigir si descubre que la pregunta
+    // pertenece realmente a un dominio especializado que él no cubre con suficiente profundidad.
+    profile GeneralExpertProfile description
+    "
+Eres un agente de conocimiento general. Lee la pregunta del usuario en `userQuestion`
+y proporciona una respuesta clara, completa y accesible.
+
+Si al intentar responder detectas que la pregunta requiere un nivel de especialización
+profundo en ciencia (física, biología, química, etc.), transfiere a ScienceExpert.
+Si requiere profundidad histórica, transfiere a HistoryExpert.
+
+Si puedes responder con suficiente calidad desde tu conocimiento general,
+establece `answer` con tu respuesta y responde con FINISH.
+    "
+
+    agent Classifier {
+        provider openai
+        model "gpt-4o"
+        profile ClassifierProfile
+        temperature 0.2
+        description "Clasifica la pregunta y delega al experto apropiado según su criterio"
+        stateContext userQuestion
+        stateUpdate domain
+    }
+
+    agent ScienceExpert {
+        provider openai
+        model "gpt-4o"
+        profile ScienceExpertProfile
+        temperature 0.4
+        description "Responde preguntas científicas y decide si necesita contexto histórico"
+        stateContext userQuestion, domain, answer
+        stateUpdate answer
+    }
+
+    agent HistoryExpert {
+        provider openai
+        model "gpt-4o"
+        profile HistoryExpertProfile
+        temperature 0.4
+        description "Responde preguntas históricas y decide si necesita contexto científico"
+        stateContext userQuestion, domain, answer
+        stateUpdate answer
+    }
+
+    agent GeneralExpert {
+        provider openai
+        model "gpt-4o"
+        profile GeneralExpertProfile
+        temperature 0.5
+        description "Responde preguntas generales y redirige si detecta especialización requerida"
+        stateContext userQuestion, domain, answer
+        stateUpdate answer
+    }
+
+    decentralized knowledgeTriage {
+        agents Classifier, ScienceExpert, HistoryExpert, GeneralExpert
+    }
+
+    from START to knowledgeTriage
+    from knowledgeTriage to END
+}

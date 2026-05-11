@@ -232,6 +232,54 @@ Con esta iteración el código generado pasa a ser desplegable de extremo a extr
 
 - Tag: `v0.5.2`
 
+## Iteración 5 — Soporte estructura `Decentralized`
+
+Quinta iteración del generador sobre el metamodelo v5. El objetivo es dar soporte completo a la estructura de comunicación `Decentralized`, la última pendiente junto a `SharedMessagePool`. Esta iteración afecta a dos módulos: `agents.py` y el nuevo `subgraph/<name>.py` para la estructura decentralized.
+
+### Modelo de ejecución elegido
+
+Los artículos en los que se basa el metamodelo caracterizan la topología decentralizada como aquella en la que cualquier agente puede comunicarse directamente con cualquier otro, sin intermediario. En la práctica existen dos interpretaciones de ejecución posibles:
+
+- **Ejecución secuencial**: cada agente actúa y, en función de su propio criterio, elige el siguiente nodo al que pasar el control.
+- **Ejecución paralela**: varios agentes actúan concurrentemente, lo que requiere el mecanismo `Send` de la API de LangGraph. Esta opción resulta demasiado compleja para los casos de uso objetivo del DSL y su uso es principalmente en sistemas robóticos multi-agente.
+
+Se adopta la ejecución secuencial, que es coherente con el resto de estructuras generadas y con la semántica de LangGraph basada en grafos de estado dirigidos.
+
+### Módulos generados
+
+**`agents.py` — nodos con `Command` para agentes decentralized**
+
+Los agentes que fortenecen a una estructura `Decentralized` generan un tipo de nodo diferente al resto. En lugar de devolver un dict de actualización del estado, devuelven un `Command` de LangGraph que combina en un único objeto la actualización del estado (`update`) y la decisión de enrutamiento (`goto`).
+
+Para ello, el schema de salida `<Agent>Output` se extiende siempre con un campo `next: Literal[<todos los miembros del cluster>, "END"]`, que le indica al modelo cuáles son las opciones de enrutamiento válidas: cualquier otro agente de la misma estructura decentralized, incluyendo él mismo (para permitir bucles intencionados), o `END` para terminar. El campo `next` solo se usa en el `goto` del `Command` y no entra en el `update` del estado.
+
+El comportamiento del nodo sigue los mismos patrones que los agentes no-decentralized, con una diferencia en el retorno:
+
+- **Sin tools, sin stateUpdate**: se introduce un schema con únicamente el campo `next` y se usa `with_structured_output`. El nodo actúa como enrutador puro.
+- **Sin tools, con stateUpdate**: el campo `next` se añade al schema existente. Invocación estructurada y `Command(goto, update={...stateUpdate})`.
+- **Con tools**: el schema-como-tool incluye `next` (además de los campos de `stateUpdate` si los hay), con `tool_choice="required"` para forzar que el modelo invoque el terminal antes de terminar. Cuando lo invoca, se extrae `goto` y los campos del estado, y se devuelve `Command(goto, update={"messages": [response], ...stateUpdate})`.
+
+La anotación de retorno del nodo incluye explícitamente los goto posibles: `Command[Literal["agente1", "agente2", ..., "__end__"]]`, lo que documenta en el propio código generado las transiciones válidas del cluster.
+
+Cuando algún agente del modelo pertenece a una estructura `Decentralized`, el generador emite automáticamente los imports necesarios (`Command`, `END`, `Literal`) en `agents.py`.
+
+**`subgraph/<name>.py` — subgrafo decentralized**
+
+Se añade `edges/decentralized.ts`, análogo a `edges/layered.ts` y `edges/centralized.ts`. El subgrafo generado registra todos los agentes del cluster como nodos del `StateGraph` y añade un único edge explícito: `START → <primer agente declarado en la definición>`. No se generan edges entre agentes porque el enrutamiento interno es responsabilidad de cada nodo a través de sus `Command(goto=...)`. El resto del routing queda autocontenido en los nodos.
+
+### Decisiones y limitaciones de esta iteración
+
+- **`next` no entra en el estado**: la decisión de enrutamiento se materializa únicamente en el `goto` del `Command`. No es necesario que `next` sea un atributo declarado en el `context` del DSL, por lo que no se modifica el metamodelo ni el `stateGenerator`.
+- **Entry point = primer agente declarado**: el subgrafo conecta `START` al primer agente de la lista `agents` de la definición `Decentralized`. Es una convención explícita y predecible para el usuario.
+- **Auto-enrutamiento permitido**: el Literal de opciones incluye el propio agente, lo que permite que un nodo se devuelva a sí mismo si la lógica de dominio lo requiere. El usuario es responsable de evitar bucles infinitos.
+- **`SharedMessagePool` pendiente**: sigue sin implementación en el generador de subgrafos.
+
+### Cierre de la iteración
+
+Con esta iteración el generador cubre las cuatro estructuras de comunicación activas del metamodelo: `Layered`, `Centralized`, `Decentralized` y (pendiente) `SharedMessagePool`. La estructura `Decentralized` es la más flexible topológicamente: los agentes se auto-dirigen usando la primitiva `Command` de LangGraph, lo que permite modelar sistemas donde el flujo de control emerge del razonamiento de los propios agentes en lugar de estar dictado por edges estáticos en el grafo.
+
+- Tag: `v0.6.0`
+
 ---
 ## Modelo de ejecución del código generado
 
