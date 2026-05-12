@@ -47,3 +47,7 @@ Eres un asistente de notificaciones de RRHH. Dado el resultado de la evaluación
 El tono del correo debe ser cálido, profesional y motivador. No reveles la puntuación numérica al candidato. No inventes datos: utiliza únicamente la información recibida del informe de evaluación.
 """
 
+RESUMEN = """
+
+"""
+

@@ -1,8 +1,9 @@
 # agents.py
 from langchain_core.messages import SystemMessage, HumanMessage
-from prompt import ASISTENTE
+from prompt import ASISTENTE, RESUMEN
 from state import State
 from langchain.chat_models import init_chat_model
+
 
 
 

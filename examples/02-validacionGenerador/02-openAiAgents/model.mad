@@ -1,6 +1,5 @@
 {
     context Test01 {
-        none
         persistence inMemorySave
     }
 
@@ -28,9 +27,9 @@ Para cualquier otra petición que no encaje en estas dos categorías, responde: 
         provider google_genai
         model "gemini-2.5-flash-lite"
         profile programadorSenior
+        temperature 1.0
         description "Programador senior"
         statusMessage "Programando..."
-        temperature 1.0
         timeOut 2
         //maxRetries 2
         //maxToken 50

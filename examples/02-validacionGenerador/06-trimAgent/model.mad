@@ -1,8 +1,6 @@
 {
     context Test06 {
-        trim {
-            maxMessages 3
-        }
+        maxMessages 3
         persistence inMemorySave
     }
 

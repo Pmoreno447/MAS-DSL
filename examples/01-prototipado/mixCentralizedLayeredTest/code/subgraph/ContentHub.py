@@ -8,6 +8,21 @@ from prompt import COORDINATOR
 from agents import nodeAnalyzer, nodeSummarizer
 
 
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "analyzer"
+- "summarizer"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
 class Router(TypedDict):
     next: Literal["analyzer", "summarizer", "FINISH"]
 
@@ -15,13 +30,13 @@ modelCoordinator = init_chat_model(model="openai:gpt-4o", temperature=0)
 
 def coordinator_node(state: State) -> Command[Literal["analyzer", "summarizer", "__end__"]]:
     messages = (
-        [SystemMessage(content=COORDINATOR)]
+        [SystemMessage(content=COORDINADOR_ENRUTAMIENTO + COORDINATOR)]
         + state["messages"]
         + [HumanMessage(content=f"""
 Estado actual del sistema:
-        - content (Contenido a procesar): {state["content"]}
-        - score (Puntuación de calidad del 0 al 10): {state["score"]}
-        - summary (Resumen del contenido generado): {state["summary"]}
+        - content (Contenido a procesar): {state.get("content", "No registrado aún")}
+        - score (Puntuación de calidad del 0 al 10): {state.get("score", "No registrado aún")}
+        - summary (Resumen del contenido generado): {state.get("summary", "No registrado aún")}
     """)]
     )
     response = modelCoordinator.with_structured_output(Router).invoke(messages)

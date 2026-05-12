@@ -4,6 +4,7 @@ from prompt import PROGRAMADORSENIOR
 from state import State
 from langchain.chat_models import init_chat_model
 from langgraph.config import get_stream_writer
+
 from config import OLLAMA_BASE_URL
 
 from tools.mcpClients import tavily_search, tavily_extract

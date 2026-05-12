@@ -1,0 +1,11 @@
+langchain
+langchain-anthropic
+langchain-core
+langchain-ollama
+langchain-openai
+langgraph
+langgraph-cli[inmem]
+langsmith
+pydantic
+python-dotenv
+typing-extensions

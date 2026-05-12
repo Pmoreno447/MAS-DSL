@@ -1,6 +1,5 @@
 {
     context Test04 {
-        none
         persistence inMemorySave
     }
 
@@ -28,9 +27,9 @@ Para cualquier otra petición que no encaje en estas dos categorías, responde: 
         provider ollama
         model "qwen2.5"
         profile programadorSenior
+        temperature 1.0
         description "Programador senior"
         statusMessage "Programando..."
-        temperature 1.0
         timeOut 60
         //maxRetries 2
         //maxToken 50

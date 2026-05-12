@@ -1,8 +1,9 @@
 # agents.py
 from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage
-from prompt import EXTRACTOR, EVALUATOR, REPORTGENERATOR, NOTIFIER
+from prompt import EXTRACTOR, EVALUATOR, REPORTGENERATOR, NOTIFIER, RESUMEN
 from state import State
 from langchain.chat_models import init_chat_model
+
 
 
 from pydantic import BaseModel, Field

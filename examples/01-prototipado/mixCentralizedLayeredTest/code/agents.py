@@ -4,6 +4,8 @@ from prompt import COORDINATOR, ANALYZER, SUMMARIZER, FORMATTER, VALIDATOR, PUBL
 from state import State
 from langchain.chat_models import init_chat_model
 
+
+
 from pydantic import BaseModel, Field
 
 
@@ -15,10 +17,19 @@ class FormatterOutput(BaseModel):
 class ValidatorOutput(BaseModel):
     approved: bool = Field(description="True si el contenido supera el umbral de calidad")
 
+class AnalyzerOutput(BaseModel):
+    content: str = Field(description="Contenido a procesar")
+    score: int = Field(description="Puntuación de calidad del 0 al 10")
+
+class SummarizerOutput(BaseModel):
+    summary: str = Field(description="Resumen del contenido generado")
+
 # Modelos
 modelFormatter = init_chat_model(model="openai:gpt-4o-mini", temperature=0).with_structured_output(FormatterOutput)
 modelValidator = init_chat_model(model="openai:gpt-4o-mini", temperature=0).with_structured_output(ValidatorOutput)
 modelPublisher = init_chat_model(model="openai:gpt-4o-mini", temperature=0)
+modelAnalyzer = init_chat_model(model="openai:gpt-4o-mini", temperature=0).with_structured_output(AnalyzerOutput)
+modelSummarizer = init_chat_model(model="openai:gpt-4o-mini", temperature=0).with_structured_output(SummarizerOutput)
 
 
 
@@ -29,8 +40,8 @@ def nodeFormatter(state: State):
         [SystemMessage(content=FORMATTER)]
         + state["messages"]
         + [HumanMessage(content=f"""
-            summary: {state["summary"]}
-            score: {state["score"]}
+            summary: {state.get("summary", "No registrado aún")}
+            score: {state.get("score", "No registrado aún")}
         """)]
     )
     return {
@@ -43,8 +54,8 @@ def nodeValidator(state: State):
         [SystemMessage(content=VALIDATOR)]
         + state["messages"]
         + [HumanMessage(content=f"""
-            report: {state["report"]}
-            score: {state["score"]}
+            report: {state.get("report", "No registrado aún")}
+            score: {state.get("score", "No registrado aún")}
         """)]
     )
     return {
@@ -57,8 +68,33 @@ def nodePublisher(state: State):
         [SystemMessage(content=PUBLISHER)]
         + state["messages"]
         + [HumanMessage(content=f"""
-            report: {state["report"]}
-            approved: {state["approved"]}
+            report: {state.get("report", "No registrado aún")}
+            approved: {state.get("approved", "No registrado aún")}
         """)]
     )
     return {"messages": [result]}
+
+def nodeAnalyzer(state: State):
+    """"""
+    result = modelAnalyzer.invoke(
+        [SystemMessage(content=ANALYZER)]
+        + state["messages"]
+        
+    )
+    return {
+        "content": result.content,
+        "score": result.score
+    }
+
+def nodeSummarizer(state: State):
+    """"""
+    result = modelSummarizer.invoke(
+        [SystemMessage(content=SUMMARIZER)]
+        + state["messages"]
+        + [HumanMessage(content=f"""
+            content: {state.get("content", "No registrado aún")}
+        """)]
+    )
+    return {
+        "summary": result.summary
+    }

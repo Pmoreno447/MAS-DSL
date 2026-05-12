@@ -4,6 +4,7 @@ import os
 
 load_dotenv()
 
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
 LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
 LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -12,4 +13,6 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Configuración de mensajes
+
+
 

@@ -1,11 +1,6 @@
 {
     context Test07 {
-        mix {
-            maxToken 200
-            maxMessages 4
-            provider openai
-            model "gpt-4o"
-        }
+        maxMessages 4
         persistence inMemorySave
     }
 
@@ -14,12 +9,23 @@
 Asistente conversacional amigable
     "
 
+    profile resumen description
+    "
+    "
+
     agent chatBot {
         provider openai
         model "gpt-4o"
         profile asistente
         description "Chatbot"
 
+    }
+
+    summarizer test {
+        provider openai
+        model "gpt-4o"
+        profile resumen
+        tokenTrigger 200
     }
 
     layered Grafo {
