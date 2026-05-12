@@ -53,3 +53,15 @@ La temperatura del agente debe estar entre 0.0 y 1.0
 ### R11 - Un solo nodo summarizer
 Solo puede existir un nodo encargado de resumir la conversación en el modelo.
 - **Detectada en:** v0.6.0
+
+### R12 - Valores > 0
+maxMessages, tokenTrigger, maxToken, timeOut y maxRetries deben ser mayores que 0.
+- **Detectada en:** v0.6.0
+
+### R13 - Layered sin ciclos
+El mecanismo next de layered no debe formar ciclos.
+- **Detectada en:** v0.6.0
+
+### R14 - Dos agentes en decentralized
+En la estructura de comunicación descentralizada deben existir al menos dos nodos.
+- **Detectada en:** v0.6.0
