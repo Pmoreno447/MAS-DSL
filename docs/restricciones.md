@@ -49,3 +49,7 @@ Se puede tener una transición sin condición junto a otras transiciones con con
 ### R10 - Temperatura de los agentes
 La temperatura del agente debe estar entre 0.0 y 1.0
 - **Detectada en:** minor fixes de la sintáxis de la gramática del .langium
+
+### R11 - Un solo nodo summarizer
+Solo puede existir un nodo encargado de resumir la conversación en el modelo.
+- **Detectada en:** v0.6.0
