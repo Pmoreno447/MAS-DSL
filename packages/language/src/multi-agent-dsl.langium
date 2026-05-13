@@ -6,7 +6,7 @@ entry LLMMultiAgentSystem:
         profiles+=Profile*
         tools+=(PythonTool | MCPServer )*
         actors+=(Agent | Summarizer | Coordinator)*
-        communicationStructures+=(Layered | SharedMessagePool | Centralized | Decentralized)*
+        communicationStructures+=(Layered | SharedMessagePool | Centralized | Decentralized)+
         transitions+=CommTransition*
     '}';
 
@@ -152,13 +152,11 @@ SharedMessagePool:
 
 Decentralized:
     'decentralized' name=ID '{'
-        Agents
+        'agents' agents+=[Agent] ',' agents+=[Agent] (',' agents+=[Agent])*
     '}';
 
 Layer:
-    'layer' name=ID 'level' level=INT
-    ('next' next=[Layer])?
-    'agent' agent=[Agent];
+    'layer' agent=[Agent] ('next' next=[Agent])?;
 
 hidden terminal WS: /\s+/;
 terminal ID: /[_a-zA-Z][\w_]*/;

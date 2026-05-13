@@ -21,6 +21,10 @@
             "language": "multi-agent-dsl",
             "scopeName": "source.multi-agent-dsl",
             "path": "syntaxes/multi-agent-dsl.tmLanguage.json"
+        }],
+        "snippets": [{
+            "language": "multi-agent-dsl",
+            "path": "./snippets/multi-agent-dsl.code-snippets"
         }]
     },
     "activationEvents": [

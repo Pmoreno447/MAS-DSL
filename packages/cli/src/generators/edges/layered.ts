@@ -5,12 +5,12 @@ import * as path from 'node:path';
 import { generateNodeName, subgraphDefinitionName } from '../../util.js'
 
 function findStartLayer(layered: Layered): Layer {
-    const referencedLayers = new Set(
+    const referencedAgentNames = new Set(
         layered.layers
             .filter(l => l.next?.ref)
             .map(l => l.next!.ref!.name)
     );
-    return layered.layers.find(l => !referencedLayers.has(l.name))!;
+    return layered.layers.find(l => !referencedAgentNames.has(l.agent.ref!.name))!;
 }
 
 function getOrderedLayers(layered: Layered): Layer[] {
@@ -20,7 +20,8 @@ function getOrderedLayers(layered: Layered): Layer[] {
 
     while (current) {
         ordered.push(current);
-        current = current.next?.ref ?? undefined;
+        const nextAgentName: string | undefined = current.next?.ref?.name;
+        current = nextAgentName ? layered.layers.find(l => l.agent?.ref?.name === nextAgentName) : undefined;
     }
 
     return ordered;
