@@ -1,13 +1,20 @@
 import type { LanguageClientOptions, ServerOptions } from 'vscode-languageclient/node.js';
-import type * as vscode from 'vscode';
+import * as vscode from 'vscode';
 import * as path from 'node:path';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
+import { generateCommand } from './generate.js';
+import { previewCommand, registerPreviewRefresh } from './preview.js';
 
 let client: LanguageClient;
 
 // This function is called when the extension is activated.
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     client = await startLanguageClient(context);
+    context.subscriptions.push(
+        vscode.commands.registerCommand('multi-agent-dsl.generate', generateCommand),
+        vscode.commands.registerCommand('multi-agent-dsl.preview', () => previewCommand(context)),
+        registerPreviewRefresh(context)
+    );
 }
 
 // This function is called when the extension is deactivated.

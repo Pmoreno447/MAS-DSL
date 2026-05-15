@@ -63,3 +63,7 @@ maxMessages, tokenTrigger, maxToken, timeOut y maxRetries deben ser mayores que 
 ### R011 - Layered sin ciclos
 El mecanismo next de layered no debe formar ciclos y siempre llega a un final.
 - **Detectada en:** v0.6.0
+
+### R012 - MCP con API-KEY diferentes
+Las herramientas MCP no pueden tener apikeys con el mismo nombre.
+- **Detectada en:** Desarrollo de la extensión de vscode.

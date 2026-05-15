@@ -15,6 +15,13 @@
     "bin": {
         "multi-agent-dsl-cli": "./bin/cli.js"
     },
+    "main": "./out/generator.js",
+    "exports": {
+        ".": {
+            "types": "./out/generator.d.ts",
+            "default": "./out/generator.js"
+        }
+    },
     "scripts": {
         "clean": "shx rm -fr *.tsbuildinfo out",
         "build": "tsc",

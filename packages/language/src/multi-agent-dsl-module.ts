@@ -4,6 +4,7 @@ import { MultiAgentDslGeneratedModule, MultiAgentDslGeneratedSharedModule } from
 import { MultiAgentDslValidator, registerValidationChecks } from './multi-agent-dsl-validator.js';
 import { MultiAgentDslScopeProvider } from './multi-agent-dsl-scope-provider.js';
 import { MultiAgentDslCompletionProvider } from './multi-agent-dsl-completion-provider.js';
+import { MultiAgentDslHoverProvider } from './multi-agent-dsl-hover-provider.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -33,7 +34,8 @@ export const MultiAgentDslModule: Module<MultiAgentDslServices, PartialLangiumSe
         MultiAgentDslValidator: () => new MultiAgentDslValidator()
     },
     lsp: {
-        CompletionProvider: (services) => new MultiAgentDslCompletionProvider(services)
+        CompletionProvider: (services) => new MultiAgentDslCompletionProvider(services),
+        HoverProvider: (services) => new MultiAgentDslHoverProvider(services)
     }
 };
 

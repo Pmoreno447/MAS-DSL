@@ -3,6 +3,7 @@
     "description": "The extension specific package",
     "version": "0.0.1",
     "displayName": "multiAgentDSL",
+    "publisher": "pmoreno",
     "type": "module",
     "engines": {
         "vscode": "^1.67.0"
@@ -15,7 +16,11 @@
             "id": "multi-agent-dsl",
             "aliases": ["multiAgentDSL", "multi-agent-dsl"],
             "extensions": [".mad"],
-            "configuration": "./language-configuration.json"
+            "configuration": "./language-configuration.json",
+            "icon": {
+                "light": "./icons/mad.svg",
+                "dark": "./icons/mad.svg"
+            }
         }],
         "grammars": [{
             "language": "multi-agent-dsl",
@@ -25,10 +30,58 @@
         "snippets": [{
             "language": "multi-agent-dsl",
             "path": "./snippets/multi-agent-dsl.code-snippets"
-        }]
+        }],
+        "configurationDefaults": {
+            "[multi-agent-dsl]": {
+                "editor.wordBasedSuggestions": "off"
+            }
+        },
+        "commands": [
+            {
+                "command": "multi-agent-dsl.generate",
+                "title": "Generar código LangGraph",
+                "category": "multiAgentDSL",
+                "icon": "$(rocket)"
+            },
+            {
+                "command": "multi-agent-dsl.preview",
+                "title": "Ver diagrama del modelo",
+                "category": "multiAgentDSL",
+                "icon": "$(graph)"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "multi-agent-dsl.preview",
+                    "when": "resourceExtname == .mad",
+                    "group": "navigation"
+                },
+                {
+                    "command": "multi-agent-dsl.generate",
+                    "when": "resourceExtname == .mad",
+                    "group": "navigation"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "multi-agent-dsl.generate",
+                    "when": "resourceExtname == .mad"
+                },
+                {
+                    "command": "multi-agent-dsl.preview",
+                    "when": "resourceExtname == .mad"
+                }
+            ]
+        }
     },
+    "extensionDependencies": [
+        "bierner.markdown-mermaid"
+    ],
     "activationEvents": [
-        "onLanguage:multi-agent-dsl"
+        "onLanguage:multi-agent-dsl",
+        "onCommand:multi-agent-dsl.generate",
+        "onCommand:multi-agent-dsl.preview"
     ],
     "main": "./out/extension/main.cjs",
     "scripts": {
@@ -41,6 +94,7 @@
     },
     "dependencies": {
         "multi-agent-dsl-language": "0.0.1",
+        "multi-agent-dsl-cli": "0.0.1",
         "vscode-languageclient": "~9.0.1",
         "vscode-languageserver": "~9.0.1"
     },

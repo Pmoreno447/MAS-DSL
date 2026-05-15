@@ -2,6 +2,7 @@
     context Template {
         attribute info type string description "example of information exchange between agents"
         attribute result type boolean description "example of attribute"
+        attribute entero type int description "prueba"
 
         //maxMessages 3 //trim
         persistence inMemorySave // MongoDB | Postgre
@@ -18,7 +19,7 @@ PROMPT 2
     "  
 
     // Tools:
-    /*
+    
     pythonTool exampleTool modulePath "utils"
     mcpServer Tavily {
         url "https://mcp.tavily.com/mcp/?tavilyApiKey={key}"
@@ -26,7 +27,7 @@ PROMPT 2
         apiKeyName "TAVILY_API_KEY"
         tools "tavily_search", "tavily_extract"
     }
-    */
+    
 
     // agent, coordinator or summarizer
     agent Agente1 {
@@ -54,14 +55,32 @@ PROMPT 2
         //tools 
     }
 
+    coordinator Coordinador {
+        provider ollama
+        model "llama3.1"
+        profile profile1
+    }
+
     // Layered, Centralized or Decentralized
     layered structura1 {
         layer Agente1 next Agente2
         layer Agente2
     }
 
+    decentralized as {
+        agents Agente1, Agente2
+    }
+
+    centralized as2 {
+        coordinator Coordinador
+        agents Agente1, Agente2
+    }
+
     from START to structura1
-    //from structura1 to structura2 when result equal False
-    //from structura1 to END when result equal True
-    from structura1 to END
+    from structura1 to as
+    from as to as2
+    //from structura1 to as when result equal False
+    from structura1 to as2 when info equal "hola"
+    //from structura1 to END when entero equal 21
+    from as2 to END
 }

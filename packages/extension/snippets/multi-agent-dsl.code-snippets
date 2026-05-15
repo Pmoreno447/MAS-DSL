@@ -71,5 +71,74 @@
             "}",
             "$0"
         ]
+    },
+    "Agent": {
+        "prefix": "agent",
+        "description": "Declaración de un agente",
+        "body": [
+            "agent ${1:NombreAgente} {",
+            "\tprovider ${2|openai,anthropic,ollama,google_genai|}",
+            "\tmodel \"${3:gpt-4o}\"",
+            "\tprofile ${4:profile1}",
+            "\ttemperature ${5:0.0}",
+            "",
+            "\tstateContext ${6:info}",
+            "\tstateUpdate ${7:result}",
+            "}",
+            "$0"
+        ]
+    },
+    "MCP Server": {
+        "prefix": "mcpServer",
+        "description": "Declaración de una herramienta MCP Server",
+        "body": [
+            "mcpServer ${1:NombreServidor} {",
+            "\turl \"${2:https://mcp.example.com/mcp/}\"",
+            "\ttransport \"${3:streamable_http}\"",
+            "\tapiKeyName \"${4:API_KEY}\"",
+            "\ttools \"${5:tool_name}\"",
+            "}",
+            "$0"
+        ]
+    },
+    "Transition": {
+        "prefix": "transition",
+        "description": "Transición entre estructuras de comunicación",
+        "body": [
+            "from ${1:origen} to ${2:destino} when ${3:atributo} ${4|equal,greather,lower|} ${5:True}",
+            "$0"
+        ]
+    },
+    "Layered Structure": {
+        "prefix": "layered",
+        "description": "Estructura de comunicación por capas",
+        "body": [
+            "layered ${1:NombreEstructura} {",
+            "\tlayer ${2:Agente1} next ${3:Agente2}",
+            "\tlayer ${3:Agente2}",
+            "}",
+            "$0"
+        ]
+    },
+    "Centralized Structure": {
+        "prefix": "centralized",
+        "description": "Estructura de comunicación centralizada",
+        "body": [
+            "centralized ${1:NombreEstructura} {",
+            "\tcoordinator ${2:Coordinador}",
+            "\tagents ${3:Agente1}, ${4:Agente2}",
+            "}",
+            "$0"
+        ]
+    },
+    "Decentralized Structure": {
+        "prefix": "decentralized",
+        "description": "Estructura de comunicación descentralizada",
+        "body": [
+            "decentralized ${1:NombreEstructura} {",
+            "\tagents ${2:Agente1}, ${3:Agente2}",
+            "}",
+            "$0"
+        ]
     }
 }

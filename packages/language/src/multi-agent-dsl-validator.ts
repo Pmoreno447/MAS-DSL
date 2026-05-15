@@ -14,7 +14,7 @@ export function registerValidationChecks(services: MultiAgentDslServices) {
         Summarizer: [validator.checkSummarizerModel, validator.checkSummarizerTemperature, validator.checkSummarizerPositiveValues],
         Context: validator.checkContextPositiveValues,
         Layered: validator.checkLayeredNoCycles,
-        LLMMultiAgentSystem: [validator.checkCommunicationStructuresConnected, validator.checkMcpServer, validator.uniqueStartPoint, validator.checkDuplicatedArcs, validator.checkUniqueTransition, validator.checkTransitionCompatibility, validator.checkSummarizerUnique],
+        LLMMultiAgentSystem: [validator.checkCommunicationStructuresConnected, validator.checkMcpServer, validator.checkMcpApiKeyUnique, validator.uniqueStartPoint, validator.checkDuplicatedArcs, validator.checkUniqueTransition, validator.checkTransitionCompatibility, validator.checkSummarizerUnique],
         CommTransition: validator.checkConditionTypeCompatibility,
     };
     registry.register(checks, validator);
@@ -83,6 +83,17 @@ export class MultiAgentDslValidator {
             const isDuplicated = mcpServers.some(s => s.url === server.url && s !== server);
             if (isDuplicated) {
                 accept('error', `URL duplicada "${server.url}" en MCPServer "${server.name}".`, { node: server, property: 'url' });
+            }
+        }
+    }
+
+    // R12: apiKeyName única por MCPServer
+    checkMcpApiKeyUnique(system: LLMMultiAgentSystem, accept: ValidationAcceptor): void {
+        const withKey = system.tools.filter(isMCPServer).filter(s => s.apiKeyName);
+        for (const server of withKey) {
+            const isDuplicated = withKey.some(s => s.apiKeyName === server.apiKeyName && s !== server);
+            if (isDuplicated) {
+                accept('error', `apiKeyName duplicada "${server.apiKeyName}" en MCPServer "${server.name}".`, { node: server, property: 'apiKeyName' });
             }
         }
     }

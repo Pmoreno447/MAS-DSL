@@ -7,6 +7,10 @@ import { modelsFor } from './models.js';
 
 export class MultiAgentDslCompletionProvider extends DefaultCompletionProvider {
 
+    override readonly completionOptions = {
+        triggerCharacters: [' ']
+    };
+
     protected override completionFor(
         context: CompletionContext,
         next: NextFeature,
