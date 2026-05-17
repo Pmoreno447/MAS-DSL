@@ -75,8 +75,8 @@ Reglas:
 
     // Pipeline: primero investiga, luego redacta
     layered ResearchPipeline {
-        layer WriterLayer level 2 agent Writer
-        layer ResearcherLayer level 1 next WriterLayer agent Researcher
+        layer Writer
+        layer Researcher next Writer
     }
 
     from START to ResearchPipeline

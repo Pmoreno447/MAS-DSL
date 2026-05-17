@@ -14,7 +14,7 @@ export function registerValidationChecks(services: MultiAgentDslServices) {
         Summarizer: [validator.checkSummarizerModel, validator.checkSummarizerTemperature, validator.checkSummarizerPositiveValues],
         Context: validator.checkContextPositiveValues,
         Layered: validator.checkLayeredNoCycles,
-        LLMMultiAgentSystem: [validator.checkCommunicationStructuresConnected, validator.checkMcpServer, validator.checkMcpApiKeyUnique, validator.uniqueStartPoint, validator.checkDuplicatedArcs, validator.checkUniqueTransition, validator.checkTransitionCompatibility, validator.checkSummarizerUnique],
+        LLMMultiAgentSystem: [validator.checkCommunicationStructuresConnected, validator.checkMcpServer, validator.checkMcpApiKeyUnique, validator.uniqueStartPoint, validator.checkDuplicatedArcs, validator.checkUniqueTransition, validator.checkTransitionCompatibility, validator.checkSummarizerUnique, validator.checkUniqueNames],
         CommTransition: validator.checkConditionTypeCompatibility,
     };
     registry.register(checks, validator);
@@ -39,13 +39,13 @@ type TemperatureNode = AstNode & { name: string; temperature?: number };
 
 function checkPositive(node: AstNode, field: string, value: number | undefined, accept: ValidationAcceptor): void {
     if (value !== undefined && value <= 0) {
-        accept('error', `"${field}" debe ser mayor que 0.`, { node, property: field });
+        accept('error', `"${field}" debe ser mayor que 0.`, { node, code: 'R10' ,property: field });
     }
 }
 
 function checkTemperature(node: TemperatureNode, accept: ValidationAcceptor): void {
     if (node.temperature !== undefined && (node.temperature < 0.0 || node.temperature > 1.0)) {
-        accept('error', `La temperatura de "${node.name}" debe estar entre 0.0 y 1.0.`, { node, property: 'temperature' });
+        accept('error', `La temperatura de "${node.name}" debe estar entre 0.0 y 1.0.`, { node, code: 'R08', property: 'temperature' });
     }
 }
 
@@ -71,7 +71,7 @@ export class MultiAgentDslValidator {
                 t.source?.ref === structure || t.target?.ref === structure
             );
             if (!isConnected) {
-                accept('error', `La estructura "${structure.name}" no está conectada a ninguna transición.`, { node: structure });
+                accept('error', `La estructura "${structure.name}" no está conectada a ninguna transición.`, { node: structure, code: 'R01' });
             }
         }
     }
@@ -82,18 +82,7 @@ export class MultiAgentDslValidator {
         for (const server of mcpServers) {
             const isDuplicated = mcpServers.some(s => s.url === server.url && s !== server);
             if (isDuplicated) {
-                accept('error', `URL duplicada "${server.url}" en MCPServer "${server.name}".`, { node: server, property: 'url' });
-            }
-        }
-    }
-
-    // R12: apiKeyName única por MCPServer
-    checkMcpApiKeyUnique(system: LLMMultiAgentSystem, accept: ValidationAcceptor): void {
-        const withKey = system.tools.filter(isMCPServer).filter(s => s.apiKeyName);
-        for (const server of withKey) {
-            const isDuplicated = withKey.some(s => s.apiKeyName === server.apiKeyName && s !== server);
-            if (isDuplicated) {
-                accept('error', `apiKeyName duplicada "${server.apiKeyName}" en MCPServer "${server.name}".`, { node: server, property: 'apiKeyName' });
+                accept('error', `URL duplicada "${server.url}" en MCPServer "${server.name}".`, { node: server, code: 'R02' , property: 'url' });
             }
         }
     }
@@ -102,13 +91,13 @@ export class MultiAgentDslValidator {
     uniqueStartPoint(system: LLMMultiAgentSystem, accept: ValidationAcceptor): void {
         const starts = system.transitions.filter(t => t.isStart);
         if (starts.length === 0) {
-            accept('error', 'Debe existir exactamente una transición START.', { node: system });
+            accept('error', 'Debe existir exactamente una transición START.', { node: system, code: 'R03' });
         } else if (starts.length > 1) {
             for (const t of starts) {
-                accept('error', 'Solo puede haber un START en el sistema.', { node: t });
+                accept('error', 'Solo puede haber un START en el sistema.', { node: t, code: 'R03' });
             }
         } else if (starts[0].isEnd) {
-            accept('error', 'La transición START no puede ir directamente a END: incluye al menos una estructura de comunicación en el modelo.', { node: starts[0] });
+            accept('error', 'La transición START no puede ir directamente a END: incluye al menos una estructura de comunicación en el modelo.', { node: starts[0], code: 'R03' });
         }
     }
 
@@ -122,7 +111,7 @@ export class MultiAgentDslValidator {
                 other.target?.ref === t.target?.ref
             );
             if (isDuplicated) {
-                accept('error', `Arco duplicado desde "${t.source!.ref!.name}" hacia "${t.target!.ref!.name}".`, { node: t });
+                accept('error', `Arco duplicado desde "${t.source!.ref!.name}" hacia "${t.target!.ref!.name}".`, { node: t, code: 'R04' });
             }
         }
     }
@@ -132,7 +121,7 @@ export class MultiAgentDslValidator {
         for (const t of system.transitions.filter(t => t.condition && t.source)) {
             const siblings = system.transitions.filter(other => other.source?.ref === t.source?.ref);
             if (siblings.length === 1) {
-                accept('error', `La única transición desde "${t.source!.ref!.name}" no puede llevar condición.`, { node: t, property: 'condition' });
+                accept('error', `La única transición desde "${t.source!.ref!.name}" no puede llevar condición.`, { node: t, code: 'R05' ,property: 'condition' });
             }
         }
     }
@@ -150,7 +139,7 @@ export class MultiAgentDslValidator {
             (attrType === 'boolean' && !isBoolLiteral(value));
 
         if (mismatch) {
-            accept('error', `El tipo del valor no coincide con el tipo "${attrType}" del atributo "${attribute.ref!.name}".`, { node: transition.condition, property: 'value' });
+            accept('error', `El tipo del valor no coincide con el tipo "${attrType}" del atributo "${attribute.ref!.name}".`, { node: transition.condition, code: 'R06' , property: 'value' });
         }
     }
 
@@ -162,7 +151,7 @@ export class MultiAgentDslValidator {
             const unconditioned = siblings.filter(t => !t.condition);
             if (unconditioned.length > 1) {
                 for (const t of unconditioned) {
-                    accept('error', `Solo puede haber una transición sin condición desde "${source!.name}".`, { node: t });
+                    accept('error', `Solo puede haber una transición sin condición desde "${source!.name}".`, { node: t, code: 'R07' });
                 }
             }
         }
@@ -185,7 +174,7 @@ export class MultiAgentDslValidator {
     checkSummarizerUnique(system: LLMMultiAgentSystem, accept: ValidationAcceptor): void {
         if (system.actors.filter(a => a.$type === 'Summarizer').length > 1) {
             for (const s of system.actors.filter(a => a.$type === 'Summarizer')) {
-                accept('error', 'Solo puede existir un Summarizer en el sistema.', { node: s });
+                accept('error', 'Solo puede existir un Summarizer en el sistema.', { node: s, code: 'R09' });
             }
         }
     }
@@ -225,7 +214,7 @@ export class MultiAgentDslValidator {
                 if (path.has(currentAgent.name)) {
                     const cycleLayer = layered.layers.find(l => l.agent?.ref === currentAgent);
                     if (cycleLayer) {
-                        accept('error', `Ciclo detectado en "${layered.name}": el agente "${currentAgent.name}" forma un ciclo.`, { node: cycleLayer, property: 'next' });
+                        accept('error', `Ciclo detectado en "${layered.name}": el agente "${currentAgent.name}" forma un ciclo.`, { node: cycleLayer, code: 'R11',property: 'next' });
                     }
                     break;
                 }
@@ -233,6 +222,40 @@ export class MultiAgentDslValidator {
                 visited.add(currentAgent.name);
                 const nextLayer = layered.layers.find(l => l.agent?.ref === currentAgent);
                 currentAgent = nextLayer?.next?.ref;
+            }
+        }
+    }
+
+    // R12: apiKeyName única por MCPServer
+    checkMcpApiKeyUnique(system: LLMMultiAgentSystem, accept: ValidationAcceptor): void {
+        const withKey = system.tools.filter(isMCPServer).filter(s => s.apiKeyName);
+        for (const server of withKey) {
+            const isDuplicated = withKey.some(s => s.apiKeyName === server.apiKeyName && s !== server);
+            if (isDuplicated) {
+                accept('error', `apiKeyName duplicada "${server.apiKeyName}" en MCPServer "${server.name}".`, { node: server, code: 'R12', property: 'apiKeyName' });
+            }
+        }
+    }
+
+    // R13: Nombres únicos en todo el sistema (espacio de nombres global)
+    checkUniqueNames(system: LLMMultiAgentSystem, accept: ValidationAcceptor): void {
+        const named: (AstNode & { name: string })[] = [
+            system.context,
+            ...system.context.attributes,
+            ...system.profiles,
+            ...system.tools,
+            ...system.actors,
+            ...system.communicationStructures,
+        ];
+
+        const counts = new Map<string, number>();
+        for (const node of named) {
+            counts.set(node.name, (counts.get(node.name) ?? 0) + 1);
+        }
+
+        for (const node of named) {
+            if (counts.get(node.name)! > 1) {
+                accept('error', `El nombre "${node.name}" está duplicado: cada elemento del sistema debe tener un nombre único.`, { node, property: 'name', code: 'R13' });
             }
         }
     }

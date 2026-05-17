@@ -1,16 +1,16 @@
-- [ ] Añadir un `code` identificador a cada una de las 11 restricciones en tu validator (`R01`, `R02`, …). Esto lo haces **antes** de testear, porque los tests van a depender de esos códigos.
+- [x] Añadir un `code` identificador a cada una de las 11 restricciones en tu validator (`R01`, `R02`, …). Esto lo haces **antes** de testear, porque los tests van a depender de esos códigos.
 ---
 
 ## Fase 1: Pruebas de validación (restricciones) — 2-3 horas
 
 **Objetivo**: para cada una de las 11 restricciones, un test que falla y otro que pasa.
 
-- [ ] Crear `test/validating/restrictions.test.ts`.
-- [ ] Montar el helper `validate(modelText)` que parsea con Langium y devuelve los diagnósticos. Hazlo una vez, lo reutilizas todo el rato.
-- [ ] Por cada restricción R01..R11:
-  - [ ] Escribir el modelo inválido como string inline → assert que aparece el código de error correspondiente.
-  - [ ] Escribir el modelo válido equivalente → assert que no aparece ese código.
-- [ ] Lanzar `npm test` → todo verde.
+- [x] Crear `test/validating/restrictions.test.ts`.
+- [x] Montar el helper `validate(modelText)` que parsea con Langium y devuelve los diagnósticos. Hazlo una vez, lo reutilizas todo el rato.
+- [x] Por cada restricción R01..R11:
+  - [x] Escribir el modelo inválido como string inline → assert que aparece el código de error correspondiente.
+  - [x] Escribir el modelo válido equivalente → assert que no aparece ese código.
+- [x] Lanzar `npm test` → todo verde.
 
 **Salida de la fase**: ~22 tests pasando. Si alguna restricción no salta cuando debería, lo descubres aquí.
 
