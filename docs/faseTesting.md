@@ -130,29 +130,13 @@ Tras esto ejecutan correctamente. Todos excepto el 17. Es problema de gemini.
 
 ### 2.5 — Tests estáticos con snapshots (1 h)
 
-- [ ] Crear `test/generating/snapshots.test.ts`.
-- [ ] Por cada modelo: cargar fixture → generar código → `toMatchSnapshot()`.
-- [ ] Primera ejecución: revisas a ojo cada snapshot generado (esta vez sí lo miras tú, es la "verdad fundacional") y confirmas que la pinta es correcta.
-- [ ] A partir de ahí, cualquier cambio en el generador romperá los snapshots y te avisará.
+- [x] Crear `test/generating/snapshots.test.ts`.
+- [x] Por cada modelo: cargar fixture → generar código → `toMatchSnapshot()`.
+- [x] Primera ejecución: revisas a ojo cada snapshot generado (esta vez sí lo miras tú, es la "verdad fundacional") y confirmas que la pinta es correcta.
+- [x] A partir de ahí, cualquier cambio en el generador romperá los snapshots y te avisará.
 
 ---
 
 ## Fase 3: Pruebas manuales de la extensión — 30-45 min
 
 **Objetivo**: dejar constancia de que el "maquillaje" funciona. No automatizar.
-
-- [ ] Crear un documento `test/manual-checklist.md` con la siguiente lista, y rellenar:
-  - [ ] Abrir un `.tudsl` → los colores del resaltado se aplican (capturar screenshot).
-  - [ ] Escribir una palabra clave parcial → el autocompletado sugiere lo esperado (screenshot).
-  - [ ] Mirar el explorador de archivos → el icono custom aparece (screenshot).
-  - [ ] Escribir un modelo con un error de los R01..R11 → la línea se subraya en rojo y al pasar el ratón aparece el mensaje (screenshot).
-  - [ ] Ejecutar el comando "Generar código" → aparece el `.py` (screenshot).
-- [ ] Las capturas te servirán directamente para la memoria.
-
----
-
-## Cierre del día — 15 min
-
-- [ ] `npm test` completo → todo verde.
-- [ ] Anotar números finales: cuántos tests por fase, tiempo total de ejecución, coste aproximado en tokens.
-- [ ] Apuntar lo que no haya quedado bien para retomar (ej: "el test de OpenAI+MCP tarda 40s, mirar timeout").

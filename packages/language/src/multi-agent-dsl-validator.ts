@@ -1,5 +1,5 @@
 import type { AstNode, ValidationAcceptor, ValidationChecks } from 'langium';
-import { Agent, CommTransition, Context, Coordinator, isBoolLiteral, isIntLiteral, isLayered, isMCPServer, isStringLiteral, Layered, LLMMultiAgentSystem, MultiAgentDslAstType, Summarizer } from './generated/ast.js';
+import { Agent, CommTransition, Context, Coordinator, Decentralized, isBoolLiteral, isIntLiteral, isLayered, isMCPServer, isStringLiteral, Layered, LLMMultiAgentSystem, MultiAgentDslAstType, Summarizer } from './generated/ast.js';
 import type { MultiAgentDslServices } from './multi-agent-dsl-module.js';
 import { modelsFor } from './models.js';
 
@@ -9,8 +9,9 @@ export function registerValidationChecks(services: MultiAgentDslServices) {
     const registry = services.validation.ValidationRegistry;
     const validator = services.validation.MultiAgentDslValidator;
     const checks: ValidationChecks<MultiAgentDslAstType> = {
-        Agent: [validator.checkAgentModel, validator.checkAgentTemperature, validator.checkAgentPositiveValues],
-        Coordinator: [validator.checkCoordinatorModel, validator.checkCoordinatorTemperature],
+        Agent: [validator.checkAgentModel, validator.checkAgentTemperature, validator.checkAgentPositiveValues, validator.checkAgentOllamaToolsWarning],
+        Coordinator: [validator.checkCoordinatorModel, validator.checkCoordinatorTemperature, validator.checkCoordinatorGoogleWarning],
+        Decentralized: validator.checkDecentralizedGoogleWarning,
         Summarizer: [validator.checkSummarizerModel, validator.checkSummarizerTemperature, validator.checkSummarizerPositiveValues, validator.checkSummarizerNoProfile],
         Context: validator.checkContextPositiveValues,
         Layered: validator.checkLayeredNoCycles,
@@ -264,6 +265,28 @@ export class MultiAgentDslValidator {
             if (counts.get(node.name)! > 1) {
                 accept('error', `El nombre "${node.name}" está duplicado: cada elemento del sistema debe tener un nombre único.`, { node, property: 'name', code: 'R13' });
             }
+        }
+    }
+
+    // Warning: Agente con ollama y tools asignadas — verificar soporte del modelo
+    checkAgentOllamaToolsWarning(agent: Agent, accept: ValidationAcceptor): void {
+        if (agent.provider === 'ollama' && agent.tools.length > 0) {
+            accept('warning', 'Estás usando Ollama con tools. Asegúrate de que el modelo elegido sea lo suficientemente potente y soporte function calling.', { node: agent, property: 'model' });
+        }
+    }
+
+    // Warning: Coordinator con google_genai tiende a bucles infinitos
+    checkCoordinatorGoogleWarning(coordinator: Coordinator, accept: ValidationAcceptor): void {
+        if (coordinator.provider === 'google_genai') {
+            accept('warning', 'Gemini tiende a generar bucles infinitos en estructuras con coordinador. Se recomienda usar otro proveedor.', { node: coordinator, property: 'provider' });
+        }
+    }
+
+    // Warning: Decentralized con agentes google_genai tiende a bucles infinitos
+    checkDecentralizedGoogleWarning(decentralized: Decentralized, accept: ValidationAcceptor): void {
+        const hasGoogle = decentralized.agents.some(a => a.ref?.provider === 'google_genai');
+        if (hasGoogle) {
+            accept('warning', 'Gemini tiende a generar bucles infinitos en estructuras descentralizadas. Se recomienda usar otro proveedor.', { node: decentralized });
         }
     }
 

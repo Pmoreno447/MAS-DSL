@@ -74,3 +74,12 @@ El comando parsea el `.mad`, genera el texto del diagrama en sintaxis **Mermaid*
 El renderizado del bloque Mermaid lo aporta la extensión [`bierner.markdown-mermaid`](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid), declarada como `extensionDependency` en el `package.json`, por lo que VSCode la instala de forma automática junto con esta extensión.
 
 > **Nota de implementación.** La primera versión usaba un *webview* propio con Mermaid empaquetado, pero ese enfoque resultó inestable: el contenido se generaba correctamente (el SVG se producía con sus dimensiones reales) pero el *webview* no llegaba a pintarse en pantalla. Se descartó en favor del preview de Markdown nativo, que es el componente que VSCode ya tiene probado para esta tarea y elimina la necesidad de mantener un *webview* y de empaquetar la librería de Mermaid.
+
+
+## Sugerencias de MCP server
+
+Cuando procedemos a añadir una herramienta MCP, el autocompletado te ofrecerá herramientas que ya han sido testeadas como Tavily.
+
+## Warnings
+
+El editor notificará al usuario cuando haga cosas que puede que no funcionen lo suficientemente bien como por ejemplo asignar gemini a una estructura decentralizada.

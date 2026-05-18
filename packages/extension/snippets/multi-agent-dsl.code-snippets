@@ -90,13 +90,26 @@
     },
     "MCP Server": {
         "prefix": "mcpServer",
-        "description": "Declaración de una herramienta MCP Server",
+        "description": "MCP Server genérico",
         "body": [
             "mcpServer ${1:NombreServidor} {",
             "\turl \"${2:https://mcp.example.com/mcp/}\"",
             "\ttransport \"${3:streamable_http}\"",
             "\tapiKeyName \"${4:API_KEY}\"",
             "\ttools \"${5:tool_name}\"",
+            "}",
+            "$0"
+        ]
+    },
+    "MCP Tavily": {
+        "prefix": "mcpServer",
+        "description": "Herramienta de búsqueda y extracción web (Tavily)",
+        "body": [
+            "mcpServer Tavily {",
+            "\turl \"https://mcp.tavily.com/mcp/?tavilyApiKey={key}\"",
+            "\ttransport \"streamable_http\"",
+            "\tapiKeyName \"TAVILY_API_KEY\"",
+            "\ttools \"tavily_search\", \"tavily_extract\"",
             "}",
             "$0"
         ]

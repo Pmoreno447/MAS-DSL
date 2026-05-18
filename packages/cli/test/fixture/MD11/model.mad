@@ -31,8 +31,7 @@ Contesta como si fueses un cavernicola.
         apiKeyName "TAVILY_API_KEY"
         tools "tavily_search", "tavily_extract"
     }
-
-
+    
     // agent, coordinator or summarizer
     coordinator c1{
         provider ollama
