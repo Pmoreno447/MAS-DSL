@@ -1,0 +1,49 @@
+/* En este modelo las dimensiones testeadas son:
+- InMemory
+- Ollama
+- Sin herramientas.
+- Trimeado
+*/
+{
+    context CtxDecentralized {
+        maxMessages 3
+        persistence inMemorySave
+    }
+
+    profile pRespondeYPara description
+    "
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido. No necesitas resolver nada: di simplemente 'listo' y termina la ejecución pasandole el control a END.
+    "
+
+    profile pRespondeYSigue description
+    "
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido y pasa el turno a otro agente.
+    "
+
+    agent AgenteUno {
+        provider ollama
+        model "qwen2.5:7b"
+        profile pRespondeYSigue
+    }
+
+    agent AgenteDos {
+        provider ollama
+        model "qwen2.5:7b"
+        profile pRespondeYPara
+    }
+
+    agent AgenteTres {
+        provider ollama
+        model "qwen2.5:7b"
+        profile pRespondeYPara
+    }
+
+    decentralized RedDescentralizada {
+        agents AgenteUno, AgenteDos, AgenteTres
+    }
+
+    from START to RedDescentralizada
+    from RedDescentralizada to END
+}

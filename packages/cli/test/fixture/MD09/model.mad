@@ -1,0 +1,48 @@
+/* En este modelo las dimensiones testeadas son:
+- Mongo.
+- OpenaI
+- Sin herramientas.
+- Sin Trimeado ni Resumen.
+*/
+{
+    context CtxDecentralized {
+        persistence MongoDB
+    }
+
+    profile pRespondeYPara description
+    "
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido. No necesitas resolver nada: di simplemente 'listo' y termina la ajecución, no le pases el control a ningún otro agente.
+    "
+
+    profile pRespondeYSigue description
+    "
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido y pasa el turno a otro agente.
+    "
+
+    agent AgenteUno {
+        provider openai
+        model "gpt-4o"
+        profile pRespondeYSigue
+    }
+
+    agent AgenteDos {
+        provider openai
+        model "gpt-4o"
+        profile pRespondeYPara
+    }
+
+    agent AgenteTres {
+        provider openai
+        model "gpt-4o"
+        profile pRespondeYPara
+    }
+
+    decentralized RedDescentralizada {
+        agents AgenteUno, AgenteDos, AgenteTres
+    }
+
+    from START to RedDescentralizada
+    from RedDescentralizada to END
+}

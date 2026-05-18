@@ -13,6 +13,7 @@ export interface MessageConfig {
     // state/state.py
     stateImports: string;     // imports adicionales para el TypedDict (puede estar vacío)
     field: string;            // declaración del campo `messages`
+    extraStateFields: string; // campos extra del TypedDict (ej: `summary`); puede estar vacío
 
     // state/reducers.py — puede estar vacío para la estrategia "none"
     reducersImports: string;
@@ -80,27 +81,19 @@ async def summary_node(state):
     messages = state["messages"]
     split = _safe_split_index(messages)
 
-    # Mensajes a comprimir vs. mensajes a conservar literales (turno en curso).
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
     to_compress = messages[:split]
-    to_keep = messages[split:]
+    if not to_compress:
+        return {}
 
-    existing_summary = next(
-        (m.content for m in to_compress if getattr(m, "name", None) == "__summary__"),
-        None
-    )
-    new_messages = [m for m in to_compress if getattr(m, "name", None) != "__summary__"]
-
-    # Piso: si no hay nada nuevo que comprimir, no hagas nada.
-    if not new_messages:
-        return {"messages": []}
-
-    formatted = _format_for_prompt(new_messages)
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
 
     if existing_summary:
         prompt = (
             "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
             "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
-            f"Resumen previo:\\n{_content_to_text(existing_summary)}\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
             f"Nuevos mensajes:\\n{formatted}\\n\\n"
             "Devuelve el resumen actualizado con estas secciones:\\n"
             "- Objetivos del usuario\\n"
@@ -123,18 +116,19 @@ async def summary_node(state):
     new_summary = await llm.ainvoke(prompt)
     summary_text = _content_to_text(new_summary.content)
 
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
     to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
 
     return {
-        "messages": [
-            *to_delete,
-            SystemMessage(content=summary_text, name="__summary__"),
-        ]
+        "messages": to_delete,
+        "summary": summary_text,
     }`;
 }
 
 const SUMMARY_IMPORTS_BASE =
-`from langchain_core.messages import SystemMessage, RemoveMessage, BaseMessage
+`from langchain_core.messages import RemoveMessage, BaseMessage
 from langchain.chat_models import init_chat_model
 from langgraph.graph import END
 import tiktoken`;
@@ -144,6 +138,7 @@ import tiktoken`;
 const TRIM: MessageConfig = {
     stateImports: 'from state.reducers import trim_messages_reducer\nfrom config import MAX_MESSAGES',
     field: 'messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]',
+    extraStateFields: '',
     reducersImports: TRIM_REDUCER_IMPORTS,
     reducersBody: TRIM_REDUCER_BODY,
     exports: ['trim_messages_reducer'],
@@ -151,10 +146,14 @@ const TRIM: MessageConfig = {
 
 import type { Summarizer } from 'multi-agent-dsl-language';
 
+// Campo del TypedDict donde vive el resumen acumulado de la conversación.
+const SUMMARY_STATE_FIELD = '    summary: Optional[str]';
+
 function buildSummarize(s: Summarizer): MessageConfig {
     return {
         stateImports: 'from langgraph.graph.message import add_messages',
         field: 'messages: Annotated[list, add_messages]',
+        extraStateFields: SUMMARY_STATE_FIELD,
         reducersImports: `${SUMMARY_IMPORTS_BASE}\nfrom config import MAX_TOKENS`,
         reducersBody: buildSummaryNode(s.provider, s.model),
         exports: ['should_summarize', 'summary_node'],
@@ -165,6 +164,7 @@ function buildMix(s: Summarizer): MessageConfig {
     return {
         stateImports: 'from state.reducers import trim_messages_reducer\nfrom config import MAX_MESSAGES',
         field: 'messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]',
+        extraStateFields: SUMMARY_STATE_FIELD,
         reducersImports: `${SUMMARY_IMPORTS_BASE}\n${TRIM_REDUCER_IMPORTS}\nfrom config import MAX_TOKENS`,
         reducersBody: `${TRIM_REDUCER_BODY}\n\n${buildSummaryNode(s.provider, s.model)}`,
         exports: ['trim_messages_reducer', 'should_summarize', 'summary_node'],
@@ -174,6 +174,7 @@ function buildMix(s: Summarizer): MessageConfig {
 const NONE: MessageConfig = {
     stateImports: 'from langgraph.graph.message import add_messages',
     field: 'messages: Annotated[list, add_messages]',
+    extraStateFields: '',
     reducersImports: '',
     reducersBody: '',
     exports: [],

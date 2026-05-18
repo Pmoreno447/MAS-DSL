@@ -59,6 +59,7 @@ export const MODELS: Record<Provider, readonly string[]> = {
         'llama3.2',
         'llama3.1',
         'qwen3',
+        'qwen2.5:7b',
         'qwen2.5',
         'deepseek-r1',
         'mistral',

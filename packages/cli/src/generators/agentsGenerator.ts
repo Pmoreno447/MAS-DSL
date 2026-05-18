@@ -1,5 +1,5 @@
 import type { LLMMultiAgentSystem, Agent, Decentralized } from 'multi-agent-dsl-language';
-import { isMCPServer, isPythonTool, isAgent, isDecentralized } from 'multi-agent-dsl-language';
+import { isMCPServer, isPythonTool, isAgent, isDecentralized, isCentralized, isSummarizer } from 'multi-agent-dsl-language';
 import { expandToNode, toString } from 'langium/generate';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -35,6 +35,14 @@ function hasAnyDecentralizedAgent(model: LLMMultiAgentSystem): boolean {
     return model.actors.filter(isAgent).some(a => getDecentralizedCluster(a, model) !== null);
 }
 
+// True si el agente pertenece a una estructura centralizada. Sus mensajes se
+// etiquetan con `name` para que el coordinador identifique quién ya actuó.
+function isInCentralizedCluster(agent: Agent, model: LLMMultiAgentSystem): boolean {
+    return model.communicationStructures.some(
+        s => isCentralized(s) && s.agents.some(ref => ref.ref === agent)
+    );
+}
+
 function generateStructuredOutput(agent: Agent, model: LLMMultiAgentSystem): string {
     const cluster = getDecentralizedCluster(agent, model);
     const isDecentral = cluster !== null;
@@ -45,7 +53,16 @@ function generateStructuredOutput(agent: Agent, model: LLMMultiAgentSystem): str
     const className = agent.name.charAt(0).toUpperCase() + agent.name.slice(1) + 'Output';
     const fields: string[] = [];
 
+    const toolNames = collectAgentToolNames(agent);
+    const hasTools = toolNames.length > 0;
+
     if (isDecentral) {
+        // Sin tools la respuesta del agente solo existe en este schema, así que
+        // se incluye `message` para poder volcarla a state["messages"]. Con tools
+        // la respuesta ya es el AIMessage del tool-call y no hace falta.
+        if (!hasTools) {
+            fields.push(`    message: str = Field(description="Tu respuesta al usuario.")`);
+        }
         const members = clusterMemberNodeNames(cluster!);
         const literal = [...members.map(n => `"${n}"`), '"END"'].join(', ');
         fields.push(`    next: Literal[${literal}] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")`);
@@ -56,9 +73,6 @@ function generateStructuredOutput(agent: Agent, model: LLMMultiAgentSystem): str
             fields.push(`    ${ref.ref!.name}: ${toPythonType(ref.ref!.type)} = Field(description="${ref.ref!.description}")`);
         }
     }
-
-    const toolNames = collectAgentToolNames(agent);
-    const hasTools = toolNames.length > 0;
     const docstring = hasTools
         ? `    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""\n`
         : '';
@@ -121,6 +135,12 @@ ${agent.stateContext.map(ref => `            ${ref.ref!.name}: {state.get("${ref
     const cluster = getDecentralizedCluster(agent, model);
     const isDecentral = cluster !== null;
     const hasStructured = hasStateUpdate || isDecentral;
+    const inCentralized = isInCentralizedCluster(agent, model);
+
+    // Con estrategia de resumen el profile se envuelve en `_system_prompt`, que
+    // antepone el resumen acumulado del estado.
+    const hasSummary = model.actors.some(isSummarizer);
+    const systemArg = hasSummary ? `_system_prompt(${profileName}, state)` : profileName;
 
     const statusLine = agent.statusMessage
         ? `    get_stream_writer()({"status": "${agent.statusMessage}"})\n`
@@ -134,20 +154,22 @@ ${agent.stateContext.map(ref => `            ${ref.ref!.name}: {state.get("${ref
 
     // ── Rama decentralized sin tools ─────────────────────────────────────────
     if (isDecentral && !hasTools) {
-        const updateLines: string[] = [];
+        // La respuesta del agente se vuelca a state["messages"] con su nombre,
+        // así el resto de nodos y la UI ven lo que produjo cada agente.
+        const updateLines: string[] = [
+            `        "messages": [AIMessage(content=result.message, name="${agent.name.toLowerCase()}")]`,
+        ];
         if (hasStateUpdate) {
             for (const ref of agent.stateUpdate!) {
                 updateLines.push(`        "${ref.ref!.name}": result.${ref.ref!.name}`);
             }
         }
-        const updateBlock = updateLines.length > 0
-            ? `{\n${updateLines.join(',\n')}\n    }`
-            : `{}`;
+        const updateBlock = `{\n${updateLines.join(',\n')}\n    }`;
 
         return `def ${nodeName}(state: State)${returnAnnotation}:
     """${description}"""
 ${statusLine}    result = ${modelName}.invoke(
-        [SystemMessage(content=${profileName})]
+        [SystemMessage(content=${systemArg})]
         + state["messages"]
         ${contextFields}
     )
@@ -172,7 +194,7 @@ ${statusLine}    result = ${modelName}.invoke(
         return `async def ${nodeName}(state: State)${returnAnnotation}:
     """${description}"""
     messages = (
-        [SystemMessage(content=${profileName})]
+        [SystemMessage(content=${systemArg})]
         + state["messages"]
         ${contextFields}
     )
@@ -194,16 +216,19 @@ ${statusLine}    result = ${modelName}.invoke(
 
     // ── Rama sin tools (no decentralized): patrón síncrono clásico. ──────────
     if (!hasTools) {
+        // En centralized se etiqueta el mensaje con el nombre del agente para
+        // que el coordinador sepa quién ya actuó.
+        const nameLine = inCentralized ? `result.name = "${agent.name.toLowerCase()}"\n    ` : '';
         const returnBlock = hasStructured
             ? `return {\n${agent.stateUpdate!.map(ref =>
                 `        "${ref.ref!.name}": result.${ref.ref!.name}`
               ).join(',\n')}\n    }`
-            : `return {"messages": [result]}`;
+            : `${nameLine}return {"messages": [result]}`;
 
         return `def ${nodeName}(state: State):
     """${description}"""
 ${statusLine}    result = ${modelName}.invoke(
-        [SystemMessage(content=${profileName})]
+        [SystemMessage(content=${systemArg})]
         + state["messages"]
         ${contextFields}
     )
@@ -223,7 +248,7 @@ ${statusLine}    result = ${modelName}.invoke(
     return `async def ${nodeName}(state: State):
     """${description}"""
     messages = (
-        [SystemMessage(content=${profileName})]
+        [SystemMessage(content=${systemArg})]
         + state["messages"]
         ${contextFields}
     )
@@ -231,7 +256,7 @@ ${statusLine}    result = ${modelName}.invoke(
         response = await ${modelName}.ainvoke(messages)
         messages.append(response)
         if not response.tool_calls:
-            return {"messages": [response]}
+${inCentralized ? `            response.name = "${agent.name.toLowerCase()}"\n` : ''}            return {"messages": [response]}
 ${terminalBlock}        for tc in response.tool_calls:
             tool = _tools_by_name[tc["name"]]
             try:
@@ -248,8 +273,8 @@ export function agentsGenerator(model: LLMMultiAgentSystem, filePath: string, de
     const agents = model.actors.filter(isAgent);
 
     const messageImports = isUsingTools(model)
-        ? 'from langchain_core.messages import SystemMessage, HumanMessage, ToolMessage'
-        : 'from langchain_core.messages import SystemMessage, HumanMessage';
+        ? 'from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage'
+        : 'from langchain_core.messages import SystemMessage, HumanMessage, AIMessage';
 
     const hasDecentralized = hasAnyDecentralizedAgent(model);
     const hasStructuredOutputs = hasDecentralized || agents.some(
@@ -295,6 +320,18 @@ export function agentsGenerator(model: LLMMultiAgentSystem, filePath: string, de
         ? 'from langgraph.types import Command\nfrom langgraph.graph import END\nfrom typing import Literal'
         : '';
 
+    // Helper que antepone el resumen acumulado (campo `summary` del estado) al
+    // profile del agente. Solo se emite si el sistema usa estrategia de resumen.
+    const hasSummary = model.actors.some(isSummarizer);
+    const summaryHelper = hasSummary
+        ? `def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile`
+        : '';
+
     const fileNode = expandToNode`
 # agents.py
 ${messageImports}
@@ -315,6 +352,8 @@ ${structuredOutputs}
 ${models}
 
 ${toolsByName}
+
+${summaryHelper}
 
 # Nodos del grafo
 ${nodes}

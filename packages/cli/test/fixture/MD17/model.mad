@@ -1,0 +1,54 @@
+/* En este modelo las dimensiones testeadas son:
+- Postgre.
+- Google
+- Sin Herramientas.
+- Resumen
+*/
+{
+    context CtxDecentralized {
+        persistence Postgre
+    }
+
+    profile pRespondeYPara description
+    "
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido. No necesitas resolver nada: di simplemente 'listo' y termina la ajecución, pasandole el control a 'END'.
+    "
+
+    profile pRespondeYSigue description
+    "
+Eres un agente de prueba. Responde con la frase 'Iniciando prueba' y pasa el turno a otro agente que no seas tu mismo.
+    "
+
+    agent AgenteUno {
+        provider google_genai
+        model "gemini-2.5-pro"
+        profile pRespondeYSigue
+    }
+
+    agent AgenteDos {
+        provider google_genai
+        model "gemini-2.5-pro"
+        profile pRespondeYPara
+    }
+
+    agent AgenteTres {
+        provider google_genai
+        model "gemini-2.5-pro"
+        profile pRespondeYPara
+    }
+
+    summarizer Resumidor {
+        provider google_genai
+        model "gemini-2.5-pro"
+        profile pRespondeYPara
+        tokenTrigger 400
+    }
+
+    decentralized RedDescentralizada {
+        agents AgenteUno, AgenteDos, AgenteTres
+    }
+
+    from START to RedDescentralizada
+    from RedDescentralizada to END
+}

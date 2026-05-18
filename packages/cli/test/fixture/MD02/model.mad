@@ -1,0 +1,50 @@
+/* En este modelo las dimensiones testeadas son:
+- InMemory.
+- Anthropic.
+- Herramientas MCP.
+= Mix (Trim y Summarizer).
+*/
+{
+    context Template {
+        maxMessages 4
+        persistence inMemorySave // MongoDB | Postgre
+    }
+
+    profile profile1 description
+    "
+Contesta de forma lo más educada posible.
+    "
+
+    // Tools:
+    mcpServer Tavily {
+        url "https://mcp.tavily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "TAVILY_API_KEY"
+        tools "tavily_search", "tavily_extract"
+    }
+    
+
+    // agent, coordinator or summarizer
+    agent Agente1 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile1
+        tools Tavily
+    }
+
+    summarizer Agente2 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile1
+        tokenTrigger 300
+    }
+
+    // Layered, shared_message_pool, centralized or decentralized
+    layered structura1 {
+        layer Agente1
+    }
+
+    from START to structura1
+    //from structura1 to structura2 when result equal False
+    from structura1 to END
+}

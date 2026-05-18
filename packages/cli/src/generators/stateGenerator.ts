@@ -27,7 +27,7 @@ ${message.stateImports}
 class State(TypedDict):
     # Mensajes
     ${message.field}
-
+${message.extraStateFields ? `\n    # Resumen\n${message.extraStateFields}\n` : ''}
     # Atributos
 ${joinToNode(model.context.attributes, attribute =>
 `    ${attribute.name}: Optional[${toPythonType(attribute.type)}]`

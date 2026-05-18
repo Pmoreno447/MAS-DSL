@@ -1,0 +1,49 @@
+/* En este modelo las dimensiones testeadas son:
+- Mongo.
+- Anthropic
+- MCP.
+- Resumen.
+*/
+{
+    context Template {
+        persistence MongoDB
+    }
+
+    profile profile1 description
+    "
+Usa la herramienta cuando el usuario lo pida y contestale con un solo enlace que sea el mejor que hayas encontrado para lo que busca. Contesta de forma excesivamente larga y redundante.
+    "
+
+    // Tools:
+    mcpServer Tavily {
+        url "https://mcp.tavily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "TAVILY_API_KEY"
+        tools "tavily_search"
+    }
+    
+
+    // agent, coordinator or summarizer
+    summarizer Resumidor{
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile1
+        tokenTrigger 400
+    }
+
+    agent Agente1 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile1
+        temperature 0.0
+        tools Tavily
+    }
+
+    // Layered, shared_message_pool, centralized or decentralized
+    layered structura1 {
+        layer Agente1
+    }
+
+    from START to structura1
+    from structura1 to END
+}

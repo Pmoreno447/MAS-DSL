@@ -1,0 +1,55 @@
+/* En este modelo las dimensiones testeadas son:
+- Mongo.
+- Google
+- Python.
+- Trimeado
+*/
+{
+    context Template {
+        attribute resultado type string description "Resultado procesado por la herramienta Python"
+
+        maxMessages 5
+        persistence MongoDB
+    }
+
+    profile profileCoordinador description
+    "
+Eres un coordinador de tareas. Analiza la petición del usuario y delega al agente adecuado:
+- Si implica un cálculo o procesamiento de datos, delégalo a 'AgenteProcesador'.
+- Una vez que 'resultado' esté asignado, envía el control a END.
+    "
+
+    profile profileProcesador description
+    "
+Tienes acceso a una herramienta Python para procesar datos. Úsala con los valores que te proporcione el usuario y almacena el resultado.
+    "
+
+    // Tools:
+    pythonTool Procesador modulePath "utils"
+
+    // agent, coordinator or summarizer
+    agent AgenteProcesador {
+        provider google_genai
+        model "gemini-2.5-flash"
+        profile profileProcesador
+        temperature 0.0
+
+        stateUpdate resultado
+        tools Procesador
+    }
+
+    coordinator Coordinador {
+        provider google_genai
+        model "gemini-2.5-flash"
+        profile profileCoordinador
+    }
+
+    // Layered, shared_message_pool, centralized or decentralized
+    centralized structura1 {
+        coordinator Coordinador
+        agents AgenteProcesador
+    }
+
+    from START to structura1
+    from structura1 to END
+}

@@ -1,0 +1,6058 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Generator snapshots > MD01 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+ANTHROPIC_API_KEY=
+
+# Configuración de mensajes
+MAX_MESSAGES=3
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD01 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+from pydantic import BaseModel, Field
+
+
+
+# Salidas de los nodos
+class Agente1Output(BaseModel):
+    herramientas: bool = Field(description="True si tienes herramientas, si no tienes False")
+
+# Modelos
+modelAgente1 = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0.1).with_structured_output(Agente1Output)
+modelAgente2 = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0)
+modelAgente3 = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0)
+
+
+
+
+
+# Nodos del grafo
+def nodeAgente1(state: State):
+    """"""
+    result = modelAgente1.invoke(
+        [SystemMessage(content=PROFILE1)]
+        + state["messages"]
+        
+    )
+    return {
+        "herramientas": result.herramientas
+    }
+
+def nodeAgente2(state: State):
+    """"""
+    result = modelAgente2.invoke(
+        [SystemMessage(content=PROFILE2)]
+        + state["messages"]
+        
+    )
+    return {"messages": [result]}
+
+def nodeAgente3(state: State):
+    """"""
+    result = modelAgente3.invoke(
+        [SystemMessage(content=PROFILE3)]
+        + state["messages"]
+        
+    )
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD01 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    conn = await AsyncConnection.connect(
+        DB_URI,
+        autocommit=True,
+        row_factory=dict_row
+    )
+    try:
+        checkpointer = AsyncPostgresSaver(conn)
+        await checkpointer.setup()
+        yield checkpointer
+    finally:
+        await conn.close()
+"
+`;
+
+exports[`Generator snapshots > MD01 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD01 > graph.py 1`] = `
+"import os
+from config import ANTHROPIC_API_KEY
+os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.structura1 import build_structura1
+from subgraph.structura2 import build_structura2
+from subgraph.structura3 import build_structura3
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+structura2 = build_structura2()
+structura3 = build_structura3()
+
+builder.add_node("structura1", structura1)
+builder.add_node("structura2", structura2)
+builder.add_node("structura3", structura3)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+def route_structura1(state: State) -> str:
+    if state["herramientas"] == False:
+        return "structura2"
+    return "structura3"
+
+# Transiciones
+builder.add_conditional_edges(
+    "structura1",
+    route_structura1,
+    {
+        "structura2": "structura2",
+        "structura3": "structura3"
+    }
+)
+builder.add_edge("structura2", END)
+builder.add_edge("structura3", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD01 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD01 > prompt.py 1`] = `
+"PROFILE1 = """
+Independientemente de lo que te pida el usuario, solo actualiza el estado según si tienes o no herramientas.
+"""
+
+PROFILE2 = """
+Independientemente de lo que te pida el usuario pon 'Sin herramientas'.
+"""
+
+PROFILE3 = """
+Independientemente de lo que te pida el usuario pon 'Con herramientas'.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD01 > requirements.txt 1`] = `
+"langchain
+langchain-anthropic
+langchain-core
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD01 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer
+
+__all__ = ["State", "trim_messages_reducer"]
+"
+`;
+
+exports[`Generator snapshots > MD01 > state/reducers.py 1`] = `
+"# reducers.py
+from langgraph.graph.message import add_messages
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+"
+`;
+
+exports[`Generator snapshots > MD01 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Atributos
+    herramientas: Optional[bool]
+"
+`;
+
+exports[`Generator snapshots > MD01 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgente1
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("agente1", nodeAgente1)
+
+    builder.add_edge(START, "agente1")
+    builder.add_edge("agente1", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD01 > subgraph/structura2.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgente2
+
+def build_structura2():
+    builder = StateGraph(State)
+
+    builder.add_node("agente2", nodeAgente2)
+
+    builder.add_edge(START, "agente2")
+    builder.add_edge("agente2", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD01 > subgraph/structura3.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgente3
+
+def build_structura3():
+    builder = StateGraph(State)
+
+    builder.add_node("agente3", nodeAgente3)
+
+    builder.add_edge(START, "agente3")
+    builder.add_edge("agente3", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD02 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+ANTHROPIC_API_KEY=
+TAVILY_API_KEY=
+
+# Configuración de mensajes
+MAX_MESSAGES=4
+MAX_TOKENS=300
+
+
+
+"
+`;
+
+exports[`Generator snapshots > MD02 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+
+from tools.mcpClients import tavily_search, tavily_extract
+
+
+# Salidas de los nodos
+
+
+# Modelos
+modelAgente1 = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0).bind_tools([tavily_search, tavily_extract])
+
+_tools_by_name = {t.name: t for t in [tavily_search, tavily_extract]}
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+async def nodeAgente1(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE1, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgente1.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+"
+`;
+
+exports[`Generator snapshots > MD02 > checkpointer.py 1`] = `
+"import contextlib
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+@contextlib.contextmanager
+def generate_checkpointer():
+    checkpointer = InMemorySaver()
+    yield checkpointer
+"
+`;
+
+exports[`Generator snapshots > MD02 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+
+"
+`;
+
+exports[`Generator snapshots > MD02 > graph.py 1`] = `
+"import os
+from config import ANTHROPIC_API_KEY
+os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_conditional_edges(
+    "structura1",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD02 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD02 > prompt.py 1`] = `
+"PROFILE1 = """
+Contesta de forma lo más educada posible.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD02 > requirements.txt 1`] = `
+"langchain
+langchain-anthropic
+langchain-core
+langchain-mcp-adapters
+langchain-openai
+langgraph
+langgraph-cli[inmem]
+langsmith
+pydantic
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD02 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer, should_summarize, summary_node
+
+__all__ = ["State", "trim_messages_reducer", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD02 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from langgraph.graph.message import add_messages
+from config import MAX_TOKENS
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+
+llm = init_chat_model("anthropic:claude-sonnet-4-6")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD02 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD02 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgente1
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("agente1", nodeAgente1)
+
+    builder.add_edge(START, "agente1")
+    builder.add_edge("agente1", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD02 > tools/mcpClients.py 1`] = `
+"# tools/mcpClients.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from config import TAVILY_API_KEY
+
+_client = MultiServerMCPClient({
+    "Tavily": {
+        "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={key}".replace("{key}", TAVILY_API_KEY),
+        "transport": "streamable_http",
+    },
+})
+
+_all_tools = asyncio.run(_client.get_tools())
+
+def _get_tool(name: str):
+    tool = next((t for t in _all_tools if t.name == name), None)
+    if tool is None:
+        raise RuntimeError(f"Tool '{name}' no encontrada en el servidor MCP. Tools disponibles: {[t.name for t in _all_tools]}")
+    return tool
+
+tavily_search =  _get_tool("tavily_search")
+tavily_extract =  _get_tool("tavily_extract")
+"
+`;
+
+exports[`Generator snapshots > MD03 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+GOOGLE_API_KEY=
+
+# Configuración de mensajes
+MAX_TOKENS=500
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD03 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+from pydantic import BaseModel, Field
+
+from tools.calculator import Suma
+from tools.calculator import Resta
+
+# Salidas de los nodos
+class AgenteSumaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+class AgenteRestaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+# Modelos
+modelAgenteSuma = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
+modelAgenteResta = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+
+_tools_by_name = {t.name: t for t in [Suma, Resta]}
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+async def nodeAgenteSuma(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE2, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteSuma.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agentesuma"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteSumaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+async def nodeAgenteResta(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE2, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteResta.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agenteresta"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteRestaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+"
+`;
+
+exports[`Generator snapshots > MD03 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    conn = await AsyncConnection.connect(
+        DB_URI,
+        autocommit=True,
+        row_factory=dict_row
+    )
+    try:
+        checkpointer = AsyncPostgresSaver(conn)
+        await checkpointer.setup()
+        yield checkpointer
+    finally:
+        await conn.close()
+"
+`;
+
+exports[`Generator snapshots > MD03 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# Configuración de mensajes
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD03 > graph.py 1`] = `
+"import os
+from config import GOOGLE_API_KEY
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_conditional_edges(
+    "structura1",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD03 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD03 > prompt.py 1`] = `
+"PROFILE1 = """
+Gestionas un gran departamento matemático, si te piden hacer una suma pasale el control a 'AgenteSuma', si es una resta pasaselo a 'AgenteResta'.
+
+Una vez que el resultado esté asignado termina envía a 'END'.
+"""
+
+PROFILE2 = """
+Tienes acceso a una herramienta para realizar una operación matemática, usala con los valores que entregó el usuario.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD03 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-google-genai
+langchain-openai
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD03 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import should_summarize, summary_node
+
+__all__ = ["State", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD03 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from config import MAX_TOKENS
+
+llm = init_chat_model("google_genai:gemini-flash-latest")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD03 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+    result: Optional[int]
+"
+`;
+
+exports[`Generator snapshots > MD03 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgenteResta, nodeAgenteSuma
+
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agenteresta"
+- "agentesuma"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agenteresta", "agentesuma", "FINISH"]
+
+modelCoordinator = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agenteresta", "agentesuma", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Estado actual del sistema:
+        - result (Resultado de la operación.): {state.get("result", "No registrado aún")}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agenteresta", nodeAgenteResta)
+    builder.add_node("agentesuma", nodeAgenteSuma)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agenteresta", "coordinator")
+    builder.add_edge("agentesuma", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD04 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OPENAI_API_KEY=
+TAVILY_API_KEY=
+
+# Configuración de mensajes
+MAX_MESSAGES=3
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD04 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+
+from tools.mcpClients import tavily_search, tavily_extract
+
+
+# Salidas de los nodos
+
+
+# Modelos
+modelAgente1 = init_chat_model(model="openai:gpt-4o", temperature=0).bind_tools([tavily_search, tavily_extract])
+modelAgente2 = init_chat_model(model="openai:gpt-4o", temperature=1)
+
+_tools_by_name = {t.name: t for t in [tavily_search, tavily_extract]}
+
+
+
+# Nodos del grafo
+async def nodeAgente1(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=PROFILE2)]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgente1.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agente1"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+def nodeAgente2(state: State):
+    """"""
+    result = modelAgente2.invoke(
+        [SystemMessage(content=PROFILE3)]
+        + state["messages"]
+        
+    )
+    result.name = "agente2"
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD04 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from pymongo import MongoClient
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    client = MongoClient(DB_URI)
+    try:
+        checkpointer = MongoDBSaver(client)
+        yield checkpointer
+    finally:
+        client.close()"
+`;
+
+exports[`Generator snapshots > MD04 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD04 > graph.py 1`] = `
+"import os
+from config import OPENAI_API_KEY
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("structura1", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD04 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD04 > prompt.py 1`] = `
+"PROFILE1 = """
+Si el usuario te pide enlaces de internet entonces consulta con el agente 'Buscador', para cualquier otra cosa usa 'AgenteGeneral', una vez que uno de los dos se ejecute una sola vez, será el turno de finalizar.
+"""
+
+PROFILE2 = """
+Solo devuelves links de internet usando la herramienta.
+"""
+
+PROFILE3 = """
+Eres un asistente que contesta haciendo chistes.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD04 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-mcp-adapters
+langchain-openai
+langgraph
+langgraph-checkpoint-mongodb
+langgraph-cli[inmem]
+langsmith
+pydantic
+pymongo
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD04 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer
+
+__all__ = ["State", "trim_messages_reducer"]
+"
+`;
+
+exports[`Generator snapshots > MD04 > state/reducers.py 1`] = `
+"# reducers.py
+from langgraph.graph.message import add_messages
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+"
+`;
+
+exports[`Generator snapshots > MD04 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD04 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgente1, nodeAgente2
+
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agente1"
+- "agente2"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agente1", "agente2", "FINISH"]
+
+modelCoordinator = init_chat_model(model="openai:gpt-4o", temperature=0)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agente1", "agente2", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agente1", nodeAgente1)
+    builder.add_node("agente2", nodeAgente2)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agente1", "coordinator")
+    builder.add_edge("agente2", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD04 > tools/mcpClients.py 1`] = `
+"# tools/mcpClients.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from config import TAVILY_API_KEY
+
+_client = MultiServerMCPClient({
+    "Tavily": {
+        "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={key}".replace("{key}", TAVILY_API_KEY),
+        "transport": "streamable_http",
+    },
+})
+
+_all_tools = asyncio.run(_client.get_tools())
+
+def _get_tool(name: str):
+    tool = next((t for t in _all_tools if t.name == name), None)
+    if tool is None:
+        raise RuntimeError(f"Tool '{name}' no encontrada en el servidor MCP. Tools disponibles: {[t.name for t in _all_tools]}")
+    return tool
+
+tavily_search =  _get_tool("tavily_search")
+tavily_extract =  _get_tool("tavily_extract")
+"
+`;
+
+exports[`Generator snapshots > MD05 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OLLAMA_BASE_URL=
+
+# Configuración de mensajes
+MAX_MESSAGES=3
+MAX_TOKENS=300
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD05 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+from config import OLLAMA_BASE_URL
+from pydantic import BaseModel, Field
+
+from tools.calculator import Suma
+from tools.calculator import Resta
+
+# Salidas de los nodos
+class AgenteSumaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+class AgenteRestaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+# Modelos
+modelAgenteSuma = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
+modelAgenteResta = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+modelEscritor = init_chat_model(model="ollama:qwen2.5:7b", temperature=1, base_url=OLLAMA_BASE_URL)
+
+_tools_by_name = {t.name: t for t in [Suma, Resta]}
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+async def nodeAgenteSuma(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE2, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteSuma.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agentesuma"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteSumaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+async def nodeAgenteResta(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE2, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteResta.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agenteresta"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteRestaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+def nodeEscritor(state: State):
+    """"""
+    result = modelEscritor.invoke(
+        [SystemMessage(content=_system_prompt(PROFILE3, state))]
+        + state["messages"]
+        + [HumanMessage(content=f"""
+            result: {state.get("result", "No registrado aún")}
+        """)]
+    )
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD05 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from pymongo import MongoClient
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    client = MongoClient(DB_URI)
+    try:
+        checkpointer = MongoDBSaver(client)
+        yield checkpointer
+    finally:
+        client.close()"
+`;
+
+exports[`Generator snapshots > MD05 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD05 > graph.py 1`] = `
+"import os
+
+
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+from subgraph.structura2 import build_structura2
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+structura2 = build_structura2()
+
+builder.add_node("structura1", structura1)
+builder.add_node("structura2", structura2)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("structura1", "structura2")
+builder.add_conditional_edges(
+    "structura2",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD05 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD05 > prompt.py 1`] = `
+"PROFILE1 = """
+Gestionas un gran departamento matemático, si te piden hacer una suma pasale el control a 'AgenteSuma', si es una resta pasaselo a 'AgenteResta'.
+
+Una vez que el resultado esté asignado termina envía a 'END'.
+"""
+
+PROFILE2 = """
+Tienes acceso a una herramienta para realizar una operación matemática, usala con los valores que entregó el usuario.
+"""
+
+PROFILE3 = """
+Tu misión es contestar al usuario con el resultado obtenido que lo encontraras en el campo 'result'. Contesta haciendo chistes.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD05 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-ollama
+langchain-openai
+langgraph
+langgraph-checkpoint-mongodb
+langgraph-cli[inmem]
+langsmith
+pydantic
+pymongo
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD05 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer, should_summarize, summary_node
+
+__all__ = ["State", "trim_messages_reducer", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD05 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from langgraph.graph.message import add_messages
+from config import MAX_TOKENS
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+
+llm = init_chat_model("ollama:qwen2.5:7b")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD05 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+    result: Optional[int]
+"
+`;
+
+exports[`Generator snapshots > MD05 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgenteResta, nodeAgenteSuma
+from config import OLLAMA_BASE_URL
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agenteresta"
+- "agentesuma"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agenteresta", "agentesuma", "FINISH"]
+
+modelCoordinator = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agenteresta", "agentesuma", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Estado actual del sistema:
+        - result (Resultado de la operación.): {state.get("result", "No registrado aún")}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agenteresta", nodeAgenteResta)
+    builder.add_node("agentesuma", nodeAgenteSuma)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agenteresta", "coordinator")
+    builder.add_edge("agentesuma", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD05 > subgraph/structura2.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeEscritor
+
+def build_structura2():
+    builder = StateGraph(State)
+
+    builder.add_node("escritor", nodeEscritor)
+
+    builder.add_edge(START, "escritor")
+    builder.add_edge("escritor", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD06 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OLLAMA_BASE_URL=
+
+# Configuración de mensajes
+MAX_MESSAGES=3
+
+
+
+"
+`;
+
+exports[`Generator snapshots > MD06 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from prompt import PRESPONDEYPARA, PRESPONDEYSIGUE
+from state import State
+from langchain.chat_models import init_chat_model
+
+from langgraph.types import Command
+from langgraph.graph import END
+from typing import Literal
+from config import OLLAMA_BASE_URL
+from pydantic import BaseModel, Field
+
+
+
+# Salidas de los nodos
+class AgenteUnoOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+class AgenteDosOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+class AgenteTresOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+# Modelos
+modelAgenteUno = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).with_structured_output(AgenteUnoOutput)
+modelAgenteDos = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).with_structured_output(AgenteDosOutput)
+modelAgenteTres = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).with_structured_output(AgenteTresOutput)
+
+
+
+
+
+# Nodos del grafo
+def nodeAgenteUno(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteUno.invoke(
+        [SystemMessage(content=PRESPONDEYSIGUE)]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agenteuno")]
+    })
+
+def nodeAgenteDos(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteDos.invoke(
+        [SystemMessage(content=PRESPONDEYPARA)]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agentedos")]
+    })
+
+def nodeAgenteTres(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteTres.invoke(
+        [SystemMessage(content=PRESPONDEYPARA)]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agentetres")]
+    })
+"
+`;
+
+exports[`Generator snapshots > MD06 > checkpointer.py 1`] = `
+"import contextlib
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+@contextlib.contextmanager
+def generate_checkpointer():
+    checkpointer = InMemorySaver()
+    yield checkpointer
+"
+`;
+
+exports[`Generator snapshots > MD06 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+
+
+"
+`;
+
+exports[`Generator snapshots > MD06 > graph.py 1`] = `
+"import os
+
+
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.RedDescentralizada import build_RedDescentralizada
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+RedDescentralizada = build_RedDescentralizada()
+
+builder.add_node("reddescentralizada", RedDescentralizada)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "reddescentralizada")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("reddescentralizada", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD06 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD06 > prompt.py 1`] = `
+"PRESPONDEYPARA = """
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido. No necesitas resolver nada: di simplemente 'listo' y termina la ejecución pasandole el control a END.
+"""
+
+PRESPONDEYSIGUE = """
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido y pasa el turno a otro agente.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD06 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-ollama
+langgraph
+langgraph-cli[inmem]
+langsmith
+pydantic
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD06 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer
+
+__all__ = ["State", "trim_messages_reducer"]
+"
+`;
+
+exports[`Generator snapshots > MD06 > state/reducers.py 1`] = `
+"# reducers.py
+from langgraph.graph.message import add_messages
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+"
+`;
+
+exports[`Generator snapshots > MD06 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD06 > subgraph/RedDescentralizada.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgenteUno, nodeAgenteDos, nodeAgenteTres
+
+def build_RedDescentralizada():
+    builder = StateGraph(State)
+
+    builder.add_node("agenteuno", nodeAgenteUno)
+    builder.add_node("agentedos", nodeAgenteDos)
+    builder.add_node("agentetres", nodeAgenteTres)
+
+    builder.add_edge(START, "agenteuno")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD07 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+ANTHROPIC_API_KEY=
+TAVILY_API_KEY=
+
+# Configuración de mensajes
+MAX_TOKENS=400
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD07 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+
+from tools.mcpClients import tavily_search
+
+
+# Salidas de los nodos
+
+
+# Modelos
+modelAgente1 = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0).bind_tools([tavily_search])
+
+_tools_by_name = {t.name: t for t in [tavily_search]}
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+async def nodeAgente1(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE1, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgente1.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+"
+`;
+
+exports[`Generator snapshots > MD07 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from pymongo import MongoClient
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    client = MongoClient(DB_URI)
+    try:
+        checkpointer = MongoDBSaver(client)
+        yield checkpointer
+    finally:
+        client.close()"
+`;
+
+exports[`Generator snapshots > MD07 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+
+# Configuración de mensajes
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD07 > graph.py 1`] = `
+"import os
+from config import ANTHROPIC_API_KEY
+os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_conditional_edges(
+    "structura1",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD07 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD07 > prompt.py 1`] = `
+"PROFILE1 = """
+Usa la herramienta cuando el usuario lo pida y contestale con un solo enlace que sea el mejor que hayas encontrado para lo que busca. Contesta de forma excesivamente larga y redundante.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD07 > requirements.txt 1`] = `
+"langchain
+langchain-anthropic
+langchain-core
+langchain-mcp-adapters
+langchain-openai
+langgraph
+langgraph-checkpoint-mongodb
+langgraph-cli[inmem]
+langsmith
+pydantic
+pymongo
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD07 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import should_summarize, summary_node
+
+__all__ = ["State", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD07 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from config import MAX_TOKENS
+
+llm = init_chat_model("anthropic:claude-sonnet-4-6")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD07 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD07 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgente1
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("agente1", nodeAgente1)
+
+    builder.add_edge(START, "agente1")
+    builder.add_edge("agente1", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD07 > tools/mcpClients.py 1`] = `
+"# tools/mcpClients.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from config import TAVILY_API_KEY
+
+_client = MultiServerMCPClient({
+    "Tavily": {
+        "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={key}".replace("{key}", TAVILY_API_KEY),
+        "transport": "streamable_http",
+    },
+})
+
+_all_tools = asyncio.run(_client.get_tools())
+
+def _get_tool(name: str):
+    tool = next((t for t in _all_tools if t.name == name), None)
+    if tool is None:
+        raise RuntimeError(f"Tool '{name}' no encontrada en el servidor MCP. Tools disponibles: {[t.name for t in _all_tools]}")
+    return tool
+
+tavily_search =  _get_tool("tavily_search")
+"
+`;
+
+exports[`Generator snapshots > MD08 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+ANTHROPIC_API_KEY=
+
+# Configuración de mensajes
+
+
+
+
+"
+`;
+
+exports[`Generator snapshots > MD08 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+
+
+from tools.utils import buscadorWeb
+
+# Salidas de los nodos
+
+
+# Modelos
+modelAgente1 = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0).bind_tools([buscadorWeb])
+modelAgente2 = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0)
+
+_tools_by_name = {t.name: t for t in [buscadorWeb]}
+
+
+
+# Nodos del grafo
+async def nodeAgente1(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=PROFILE2)]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgente1.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agente1"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+def nodeAgente2(state: State):
+    """"""
+    result = modelAgente2.invoke(
+        [SystemMessage(content=PROFILE3)]
+        + state["messages"]
+        
+    )
+    result.name = "agente2"
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD08 > checkpointer.py 1`] = `
+"import contextlib
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+@contextlib.contextmanager
+def generate_checkpointer():
+    checkpointer = InMemorySaver()
+    yield checkpointer
+"
+`;
+
+exports[`Generator snapshots > MD08 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+
+# Configuración de mensajes
+
+
+
+"
+`;
+
+exports[`Generator snapshots > MD08 > graph.py 1`] = `
+"import os
+from config import ANTHROPIC_API_KEY
+os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("structura1", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD08 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD08 > prompt.py 1`] = `
+"PROFILE1 = """
+Si el usuario pide un resultado de la web le das el control a 'agente1', sino a 'agente2' y una vez que uno de los dos ya haya actuado, pasa a 'END', es decir, se ejecuta UNA SOLA VEZ UNO DE LOS DOS AGENTES Y DESPUÉS ACABA LA EJECUCIÓN.
+"""
+
+PROFILE2 = """
+Solo puedes usar la herramienta buscadorWeb para obtener resultados de internet, redacta con ello una respuesta en tono formal.
+"""
+
+PROFILE3 = """
+Contesta como si fueses un cavernicola.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD08 > requirements.txt 1`] = `
+"langchain
+langchain-anthropic
+langchain-core
+langgraph
+langgraph-cli[inmem]
+langsmith
+pydantic
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD08 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+
+
+__all__ = ["State"]
+"
+`;
+
+exports[`Generator snapshots > MD08 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD08 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgente1, nodeAgente2
+
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agente1"
+- "agente2"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agente1", "agente2", "FINISH"]
+
+modelCoordinator = init_chat_model(model="anthropic:claude-sonnet-4-6", temperature=0)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agente1", "agente2", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agente1", nodeAgente1)
+    builder.add_node("agente2", nodeAgente2)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agente1", "coordinator")
+    builder.add_edge("agente2", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD09 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OPENAI_API_KEY=
+
+# Configuración de mensajes
+
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD09 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from prompt import PRESPONDEYPARA, PRESPONDEYSIGUE
+from state import State
+from langchain.chat_models import init_chat_model
+
+from langgraph.types import Command
+from langgraph.graph import END
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+
+# Salidas de los nodos
+class AgenteUnoOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+class AgenteDosOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+class AgenteTresOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+# Modelos
+modelAgenteUno = init_chat_model(model="openai:gpt-4o", temperature=0).with_structured_output(AgenteUnoOutput)
+modelAgenteDos = init_chat_model(model="openai:gpt-4o", temperature=0).with_structured_output(AgenteDosOutput)
+modelAgenteTres = init_chat_model(model="openai:gpt-4o", temperature=0).with_structured_output(AgenteTresOutput)
+
+
+
+
+
+# Nodos del grafo
+def nodeAgenteUno(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteUno.invoke(
+        [SystemMessage(content=PRESPONDEYSIGUE)]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agenteuno")]
+    })
+
+def nodeAgenteDos(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteDos.invoke(
+        [SystemMessage(content=PRESPONDEYPARA)]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agentedos")]
+    })
+
+def nodeAgenteTres(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteTres.invoke(
+        [SystemMessage(content=PRESPONDEYPARA)]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agentetres")]
+    })
+"
+`;
+
+exports[`Generator snapshots > MD09 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from pymongo import MongoClient
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    client = MongoClient(DB_URI)
+    try:
+        checkpointer = MongoDBSaver(client)
+        yield checkpointer
+    finally:
+        client.close()"
+`;
+
+exports[`Generator snapshots > MD09 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Configuración de mensajes
+
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD09 > graph.py 1`] = `
+"import os
+from config import OPENAI_API_KEY
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.RedDescentralizada import build_RedDescentralizada
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+RedDescentralizada = build_RedDescentralizada()
+
+builder.add_node("reddescentralizada", RedDescentralizada)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "reddescentralizada")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("reddescentralizada", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD09 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD09 > prompt.py 1`] = `
+"PRESPONDEYPARA = """
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido. No necesitas resolver nada: di simplemente 'listo' y termina la ajecución, no le pases el control a ningún otro agente.
+"""
+
+PRESPONDEYSIGUE = """
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido y pasa el turno a otro agente.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD09 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-openai
+langgraph
+langgraph-checkpoint-mongodb
+langgraph-cli[inmem]
+langsmith
+pydantic
+pymongo
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD09 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+
+
+__all__ = ["State"]
+"
+`;
+
+exports[`Generator snapshots > MD09 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD09 > subgraph/RedDescentralizada.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgenteUno, nodeAgenteDos, nodeAgenteTres
+
+def build_RedDescentralizada():
+    builder = StateGraph(State)
+
+    builder.add_node("agenteuno", nodeAgenteUno)
+    builder.add_node("agentedos", nodeAgenteDos)
+    builder.add_node("agentetres", nodeAgenteTres)
+
+    builder.add_edge(START, "agenteuno")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD10 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+GOOGLE_API_KEY=
+TAVILY_API_KEY=
+
+# Configuración de mensajes
+
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD10 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+
+from tools.mcpClients import tavily_search, tavily_extract
+
+
+# Salidas de los nodos
+
+
+# Modelos
+modelAgente1 = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0).bind_tools([tavily_search, tavily_extract])
+modelAgente2 = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0)
+
+_tools_by_name = {t.name: t for t in [tavily_search, tavily_extract]}
+
+
+
+# Nodos del grafo
+async def nodeAgente1(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=PROFILE2)]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgente1.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agente1"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+def nodeAgente2(state: State):
+    """"""
+    result = modelAgente2.invoke(
+        [SystemMessage(content=PROFILE3)]
+        + state["messages"]
+        
+    )
+    result.name = "agente2"
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD10 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    conn = await AsyncConnection.connect(
+        DB_URI,
+        autocommit=True,
+        row_factory=dict_row
+    )
+    try:
+        checkpointer = AsyncPostgresSaver(conn)
+        await checkpointer.setup()
+        yield checkpointer
+    finally:
+        await conn.close()
+"
+`;
+
+exports[`Generator snapshots > MD10 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+
+# Configuración de mensajes
+
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD10 > graph.py 1`] = `
+"import os
+from config import GOOGLE_API_KEY
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("structura1", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD10 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD10 > prompt.py 1`] = `
+"PROFILE1 = """
+Si el usuario pide un resultado de la web le das el control a 'agente1', sino a 'agente2' y una vez que uno de los dos ya haya actuado, pasa a 'END', es decir, se ejecuta UNA SOLA VEZ UNO DE LOS DOS AGENTES Y DESPUÉS ACABA LA EJECUCIÓN.
+"""
+
+PROFILE2 = """
+Solo puedes usar la herramienta buscadorWeb para obtener resultados de internet, redacta con ello una respuesta en tono formal.
+"""
+
+PROFILE3 = """
+Contesta como si fueses un cavernicola.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD10 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-google-genai
+langchain-mcp-adapters
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD10 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+
+
+__all__ = ["State"]
+"
+`;
+
+exports[`Generator snapshots > MD10 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD10 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgente1, nodeAgente2
+
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agente1"
+- "agente2"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agente1", "agente2", "FINISH"]
+
+modelCoordinator = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agente1", "agente2", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agente1", nodeAgente1)
+    builder.add_node("agente2", nodeAgente2)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agente1", "coordinator")
+    builder.add_edge("agente2", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD10 > tools/mcpClients.py 1`] = `
+"# tools/mcpClients.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from config import TAVILY_API_KEY
+
+_client = MultiServerMCPClient({
+    "Tavily": {
+        "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={key}".replace("{key}", TAVILY_API_KEY),
+        "transport": "streamable_http",
+    },
+})
+
+_all_tools = asyncio.run(_client.get_tools())
+
+def _get_tool(name: str):
+    tool = next((t for t in _all_tools if t.name == name), None)
+    if tool is None:
+        raise RuntimeError(f"Tool '{name}' no encontrada en el servidor MCP. Tools disponibles: {[t.name for t in _all_tools]}")
+    return tool
+
+tavily_search =  _get_tool("tavily_search")
+tavily_extract =  _get_tool("tavily_extract")
+"
+`;
+
+exports[`Generator snapshots > MD11 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OLLAMA_BASE_URL=
+TAVILY_API_KEY=
+
+# Configuración de mensajes
+MAX_TOKENS=500
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD11 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+from config import OLLAMA_BASE_URL
+
+from tools.mcpClients import tavily_search, tavily_extract
+
+
+# Salidas de los nodos
+
+
+# Modelos
+modelAgente1 = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([tavily_search, tavily_extract])
+modelAgente2 = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL)
+
+_tools_by_name = {t.name: t for t in [tavily_search, tavily_extract]}
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+async def nodeAgente1(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE2, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgente1.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agente1"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+def nodeAgente2(state: State):
+    """"""
+    result = modelAgente2.invoke(
+        [SystemMessage(content=_system_prompt(PROFILE3, state))]
+        + state["messages"]
+        
+    )
+    result.name = "agente2"
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD11 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    conn = await AsyncConnection.connect(
+        DB_URI,
+        autocommit=True,
+        row_factory=dict_row
+    )
+    try:
+        checkpointer = AsyncPostgresSaver(conn)
+        await checkpointer.setup()
+        yield checkpointer
+    finally:
+        await conn.close()
+"
+`;
+
+exports[`Generator snapshots > MD11 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+
+# Configuración de mensajes
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD11 > graph.py 1`] = `
+"import os
+
+
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_conditional_edges(
+    "structura1",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD11 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD11 > prompt.py 1`] = `
+"PROFILE1 = """
+Si el usuario pide un resultado de la web le das el control a 'Agente1', sino a 'Agente2' y una vez que uno de los dos ya haya actuado, pasa a 'END', es decir, se ejecuta UNA SOLA VEZ UNO DE LOS DOS AGENTES Y DESPUÉS ACABA LA EJECUCIÓN.
+"""
+
+PROFILE2 = """
+Solo puedes usar la herramienta buscadorWeb para obtener resultados de internet, redacta con ello una respuesta en tono formal.
+"""
+
+PROFILE3 = """
+Contesta como si fueses un cavernicola.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD11 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-mcp-adapters
+langchain-ollama
+langchain-openai
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD11 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import should_summarize, summary_node
+
+__all__ = ["State", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD11 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from config import MAX_TOKENS
+
+llm = init_chat_model("ollama:qwen2.5:7b")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD11 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD11 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgente1, nodeAgente2
+from config import OLLAMA_BASE_URL
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agente1"
+- "agente2"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agente1", "agente2", "FINISH"]
+
+modelCoordinator = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agente1", "agente2", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agente1", nodeAgente1)
+    builder.add_node("agente2", nodeAgente2)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agente1", "coordinator")
+    builder.add_edge("agente2", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD11 > tools/mcpClients.py 1`] = `
+"# tools/mcpClients.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from config import TAVILY_API_KEY
+
+_client = MultiServerMCPClient({
+    "Tavily": {
+        "url": "https://mcp.tavily.com/mcp/?tavilyApiKey={key}".replace("{key}", TAVILY_API_KEY),
+        "transport": "streamable_http",
+    },
+})
+
+_all_tools = asyncio.run(_client.get_tools())
+
+def _get_tool(name: str):
+    tool = next((t for t in _all_tools if t.name == name), None)
+    if tool is None:
+        raise RuntimeError(f"Tool '{name}' no encontrada en el servidor MCP. Tools disponibles: {[t.name for t in _all_tools]}")
+    return tool
+
+tavily_search =  _get_tool("tavily_search")
+tavily_extract =  _get_tool("tavily_extract")
+"
+`;
+
+exports[`Generator snapshots > MD12 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OPENAI_API_KEY=
+
+# Configuración de mensajes
+MAX_MESSAGES=3
+MAX_TOKENS=800
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD12 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from prompt import PROFILE1
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+
+
+
+
+# Salidas de los nodos
+
+
+# Modelos
+modelAgente1 = init_chat_model(model="openai:gpt-4o", temperature=0.2)
+
+
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+def nodeAgente1(state: State):
+    """"""
+    result = modelAgente1.invoke(
+        [SystemMessage(content=_system_prompt(PROFILE1, state))]
+        + state["messages"]
+        
+    )
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD12 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    conn = await AsyncConnection.connect(
+        DB_URI,
+        autocommit=True,
+        row_factory=dict_row
+    )
+    try:
+        checkpointer = AsyncPostgresSaver(conn)
+        await checkpointer.setup()
+        yield checkpointer
+    finally:
+        await conn.close()
+"
+`;
+
+exports[`Generator snapshots > MD12 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD12 > graph.py 1`] = `
+"import os
+from config import OPENAI_API_KEY
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_conditional_edges(
+    "structura1",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD12 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD12 > prompt.py 1`] = `
+"PROFILE1 = """
+Sé educado con el usuario. Contesta de forma excesivamente larga.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD12 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-openai
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD12 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer, should_summarize, summary_node
+
+__all__ = ["State", "trim_messages_reducer", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD12 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from langgraph.graph.message import add_messages
+from config import MAX_TOKENS
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+
+llm = init_chat_model("openai:gpt-4o")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD12 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD12 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgente1
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("agente1", nodeAgente1)
+
+    builder.add_edge(START, "agente1")
+    builder.add_edge("agente1", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD13 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+GOOGLE_API_KEY=
+
+# Configuración de mensajes
+MAX_MESSAGES=5
+MAX_TOKENS=400
+
+
+
+"
+`;
+
+exports[`Generator snapshots > MD13 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILECOORDINADOR, PROFILEPROCESADOR
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+from pydantic import BaseModel, Field
+
+from tools.utils import Procesador
+
+# Salidas de los nodos
+class AgenteProcesadorOutput(BaseModel):
+    resultado: str = Field(description="Resultado procesado por la herramienta Python")
+
+# Modelos
+modelAgenteProcesador = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0).with_structured_output(AgenteProcesadorOutput)
+
+_tools_by_name = {t.name: t for t in [Procesador]}
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+def nodeAgenteProcesador(state: State):
+    """"""
+    result = modelAgenteProcesador.invoke(
+        [SystemMessage(content=_system_prompt(PROFILEPROCESADOR, state))]
+        + state["messages"]
+        
+    )
+    return {
+        "resultado": result.resultado
+    }
+"
+`;
+
+exports[`Generator snapshots > MD13 > checkpointer.py 1`] = `
+"import contextlib
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+@contextlib.contextmanager
+def generate_checkpointer():
+    checkpointer = InMemorySaver()
+    yield checkpointer
+"
+`;
+
+exports[`Generator snapshots > MD13 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+
+"
+`;
+
+exports[`Generator snapshots > MD13 > graph.py 1`] = `
+"import os
+from config import GOOGLE_API_KEY
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_conditional_edges(
+    "structura1",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD13 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD13 > prompt.py 1`] = `
+"PROFILECOORDINADOR = """
+Eres un coordinador de tareas. Analiza la petición del usuario y delega al agente adecuado:
+- Si implica un cálculo o procesamiento de datos, delégalo a 'AgenteProcesador'.
+- Una vez que 'resultado' esté asignado, envía el control a END.
+"""
+
+PROFILEPROCESADOR = """
+Haz lo que te pida el usuario.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD13 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-google-genai
+langchain-openai
+langgraph
+langgraph-cli[inmem]
+langsmith
+pydantic
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD13 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer, should_summarize, summary_node
+
+__all__ = ["State", "trim_messages_reducer", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD13 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from langgraph.graph.message import add_messages
+from config import MAX_TOKENS
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+
+llm = init_chat_model("google_genai:gemini-2.5-flash")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD13 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+    resultado: Optional[str]
+"
+`;
+
+exports[`Generator snapshots > MD13 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILECOORDINADOR
+from agents import nodeAgenteProcesador
+
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agenteprocesador"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agenteprocesador", "FINISH"]
+
+modelCoordinator = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agenteprocesador", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Estado actual del sistema:
+        - resultado (Resultado procesado por la herramienta Python): {state.get("resultado", "No registrado aún")}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILECOORDINADOR),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agenteprocesador", nodeAgenteProcesador)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agenteprocesador", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD14 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+GOOGLE_API_KEY=
+
+# Configuración de mensajes
+MAX_MESSAGES=5
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD14 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILECOORDINADOR, PROFILEPROCESADOR
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+from pydantic import BaseModel, Field
+
+from tools.utils import Procesador
+
+# Salidas de los nodos
+class AgenteProcesadorOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    resultado: str = Field(description="Resultado procesado por la herramienta Python")
+
+# Modelos
+modelAgenteProcesador = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0).bind_tools([Procesador, AgenteProcesadorOutput], tool_choice="required")
+
+_tools_by_name = {t.name: t for t in [Procesador]}
+
+
+
+# Nodos del grafo
+async def nodeAgenteProcesador(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=PROFILEPROCESADOR)]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteProcesador.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agenteprocesador"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteProcesadorOutput":
+                return {
+                    "resultado": tc["args"]["resultado"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+"
+`;
+
+exports[`Generator snapshots > MD14 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from pymongo import MongoClient
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    client = MongoClient(DB_URI)
+    try:
+        checkpointer = MongoDBSaver(client)
+        yield checkpointer
+    finally:
+        client.close()"
+`;
+
+exports[`Generator snapshots > MD14 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# Configuración de mensajes
+MAX_MESSAGES = int(os.getenv("MAX_MESSAGES", 10))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD14 > graph.py 1`] = `
+"import os
+from config import GOOGLE_API_KEY
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.structura1 import build_structura1
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+
+builder.add_node("structura1", structura1)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("structura1", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD14 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD14 > prompt.py 1`] = `
+"PROFILECOORDINADOR = """
+Eres un coordinador de tareas. Analiza la petición del usuario y delega al agente adecuado:
+- Si implica un cálculo o procesamiento de datos, delégalo a 'AgenteProcesador'.
+- Una vez que 'resultado' esté asignado, envía el control a END.
+"""
+
+PROFILEPROCESADOR = """
+Tienes acceso a una herramienta Python para procesar datos. Úsala con los valores que te proporcione el usuario y almacena el resultado.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD14 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-google-genai
+langgraph
+langgraph-checkpoint-mongodb
+langgraph-cli[inmem]
+langsmith
+pydantic
+pymongo
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD14 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import trim_messages_reducer
+
+__all__ = ["State", "trim_messages_reducer"]
+"
+`;
+
+exports[`Generator snapshots > MD14 > state/reducers.py 1`] = `
+"# reducers.py
+from langgraph.graph.message import add_messages
+
+def trim_messages_reducer(max_messages: int):
+    """
+    Devuelve un reducer que mantiene solo los últimos max_messages mensajes,
+    conservando siempre el primero.
+    """
+    def reducer(current: list, new: list) -> list:
+        updated = add_messages(current, new)
+        if len(updated) > max_messages:
+            return [updated[0]] + updated[-(max_messages - 1):]
+        return updated
+    return reducer
+"
+`;
+
+exports[`Generator snapshots > MD14 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from state.reducers import trim_messages_reducer
+from config import MAX_MESSAGES
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, trim_messages_reducer(MAX_MESSAGES)]
+
+    # Atributos
+    resultado: Optional[str]
+"
+`;
+
+exports[`Generator snapshots > MD14 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILECOORDINADOR
+from agents import nodeAgenteProcesador
+
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agenteprocesador"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agenteprocesador", "FINISH"]
+
+modelCoordinator = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agenteprocesador", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Estado actual del sistema:
+        - resultado (Resultado procesado por la herramienta Python): {state.get("resultado", "No registrado aún")}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILECOORDINADOR),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agenteprocesador", nodeAgenteProcesador)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agenteprocesador", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD15 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OLLAMA_BASE_URL=
+
+# Configuración de mensajes
+
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD15 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+from config import OLLAMA_BASE_URL
+from pydantic import BaseModel, Field
+
+from tools.calculator import Suma
+from tools.calculator import Resta
+
+# Salidas de los nodos
+class AgenteSumaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+class AgenteRestaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+# Modelos
+modelAgenteSuma = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
+modelAgenteResta = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+modelEscritor = init_chat_model(model="ollama:qwen2.5:7b", temperature=1, base_url=OLLAMA_BASE_URL)
+
+_tools_by_name = {t.name: t for t in [Suma, Resta]}
+
+
+
+# Nodos del grafo
+async def nodeAgenteSuma(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=PROFILE2)]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteSuma.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agentesuma"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteSumaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+async def nodeAgenteResta(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=PROFILE2)]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteResta.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agenteresta"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteRestaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+def nodeEscritor(state: State):
+    """"""
+    result = modelEscritor.invoke(
+        [SystemMessage(content=PROFILE3)]
+        + state["messages"]
+        + [HumanMessage(content=f"""
+            result: {state.get("result", "No registrado aún")}
+        """)]
+    )
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD15 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    conn = await AsyncConnection.connect(
+        DB_URI,
+        autocommit=True,
+        row_factory=dict_row
+    )
+    try:
+        checkpointer = AsyncPostgresSaver(conn)
+        await checkpointer.setup()
+        yield checkpointer
+    finally:
+        await conn.close()
+"
+`;
+
+exports[`Generator snapshots > MD15 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+# Configuración de mensajes
+
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD15 > graph.py 1`] = `
+"import os
+
+
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State
+from subgraph.structura1 import build_structura1
+from subgraph.structura2 import build_structura2
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+structura2 = build_structura2()
+
+builder.add_node("structura1", structura1)
+builder.add_node("structura2", structura2)
+
+
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("structura1", "structura2")
+builder.add_edge("structura2", END)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD15 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD15 > prompt.py 1`] = `
+"PROFILE1 = """
+Gestionas un gran departamento matemático, si te piden hacer una suma pasale el control a 'AgenteSuma', si es una resta pasaselo a 'AgenteResta'.
+
+Una vez que el resultado esté asignado termina envía a 'END'.
+"""
+
+PROFILE2 = """
+Tienes acceso a una herramienta para realizar una operación matemática, usala con los valores que entregó el usuario.
+"""
+
+PROFILE3 = """
+Tu misión es contestar al usuario con el resultado obtenido que lo encontraras en el campo 'result'. Contesta haciendo chistes.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD15 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-ollama
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD15 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+
+
+__all__ = ["State"]
+"
+`;
+
+exports[`Generator snapshots > MD15 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Atributos
+    result: Optional[int]
+"
+`;
+
+exports[`Generator snapshots > MD15 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgenteResta, nodeAgenteSuma
+from config import OLLAMA_BASE_URL
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agenteresta"
+- "agentesuma"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agenteresta", "agentesuma", "FINISH"]
+
+modelCoordinator = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agenteresta", "agentesuma", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Estado actual del sistema:
+        - result (Resultado de la operación.): {state.get("result", "No registrado aún")}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agenteresta", nodeAgenteResta)
+    builder.add_node("agentesuma", nodeAgenteSuma)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agenteresta", "coordinator")
+    builder.add_edge("agentesuma", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD15 > subgraph/structura2.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeEscritor
+
+def build_structura2():
+    builder = StateGraph(State)
+
+    builder.add_node("escritor", nodeEscritor)
+
+    builder.add_edge(START, "escritor")
+    builder.add_edge("escritor", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD16 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+OPENAI_API_KEY=
+
+# Configuración de mensajes
+MAX_TOKENS=400
+
+
+
+"
+`;
+
+exports[`Generator snapshots > MD16 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, ToolMessage
+from prompt import PROFILE1, PROFILE2, PROFILE3
+from state import State
+from langchain.chat_models import init_chat_model
+
+
+
+from pydantic import BaseModel, Field
+
+from tools.calculator import Suma
+from tools.calculator import Resta
+
+# Salidas de los nodos
+class AgenteSumaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+class AgenteRestaOutput(BaseModel):
+    """Llama a esta herramienta cuando hayas terminado para entregar el resultado final."""
+    result: int = Field(description="Resultado de la operación.")
+
+# Modelos
+modelAgenteSuma = init_chat_model(model="openai:gpt-4o", temperature=0).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
+modelAgenteResta = init_chat_model(model="openai:gpt-4o", temperature=0).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+modelEscritor = init_chat_model(model="openai:gpt-4o", temperature=1)
+
+_tools_by_name = {t.name: t for t in [Suma, Resta]}
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+async def nodeAgenteSuma(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE2, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteSuma.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agentesuma"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteSumaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+async def nodeAgenteResta(state: State):
+    """"""
+    messages = (
+        [SystemMessage(content=_system_prompt(PROFILE2, state))]
+        + state["messages"]
+        
+    )
+    while True:
+        response = await modelAgenteResta.ainvoke(messages)
+        messages.append(response)
+        if not response.tool_calls:
+            response.name = "agenteresta"
+            return {"messages": [response]}
+        for tc in response.tool_calls:
+            if tc["name"] == "AgenteRestaOutput":
+                return {
+                    "result": tc["args"]["result"]
+                }
+        for tc in response.tool_calls:
+            tool = _tools_by_name[tc["name"]]
+            try:
+                result = await tool.ainvoke(tc["args"])
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
+            except Exception as e:
+                messages.append(ToolMessage(content=f"Error al llamar herramienta '{tc['name']}': {e}", tool_call_id=tc["id"]))
+
+def nodeEscritor(state: State):
+    """"""
+    result = modelEscritor.invoke(
+        [SystemMessage(content=_system_prompt(PROFILE3, state))]
+        + state["messages"]
+        + [HumanMessage(content=f"""
+            result: {state.get("result", "No registrado aún")}
+        """)]
+    )
+    return {"messages": [result]}
+"
+`;
+
+exports[`Generator snapshots > MD16 > checkpointer.py 1`] = `
+"import contextlib
+from langgraph.checkpoint.memory import InMemorySaver
+
+
+@contextlib.contextmanager
+def generate_checkpointer():
+    checkpointer = InMemorySaver()
+    yield checkpointer
+"
+`;
+
+exports[`Generator snapshots > MD16 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Configuración de mensajes
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+
+"
+`;
+
+exports[`Generator snapshots > MD16 > graph.py 1`] = `
+"import os
+from config import OPENAI_API_KEY
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.structura1 import build_structura1
+from subgraph.structura2 import build_structura2
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+structura1 = build_structura1()
+structura2 = build_structura2()
+
+builder.add_node("structura1", structura1)
+builder.add_node("structura2", structura2)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "structura1")
+
+# Routers
+
+
+# Transiciones
+builder.add_edge("structura1", "structura2")
+builder.add_conditional_edges(
+    "structura2",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD16 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD16 > prompt.py 1`] = `
+"PROFILE1 = """
+Gestionas un gran departamento matemático, si te piden hacer una suma pasale el control a 'AgenteSuma', si es una resta pasaselo a 'AgenteResta'.
+
+Una vez que el resultado esté asignado termina envía a 'END'.
+"""
+
+PROFILE2 = """
+Tienes acceso a una herramienta para realizar una operación matemática, usala con los valores que entregó el usuario.
+"""
+
+PROFILE3 = """
+Tu misión es contestar al usuario con el resultado obtenido que lo encontraras en el campo 'result'. Contesta haciendo chistes.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD16 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-openai
+langgraph
+langgraph-cli[inmem]
+langsmith
+pydantic
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD16 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import should_summarize, summary_node
+
+__all__ = ["State", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD16 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from config import MAX_TOKENS
+
+llm = init_chat_model("openai:gpt-4o")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD16 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+    result: Optional[int]
+"
+`;
+
+exports[`Generator snapshots > MD16 > subgraph/structura1.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from langgraph.types import Command
+from typing import Literal, TypedDict
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain.chat_models import init_chat_model
+from state import State
+from prompt import PROFILE1
+from agents import nodeAgenteResta, nodeAgenteSuma
+
+
+COORDINADOR_ENRUTAMIENTO = """
+Debes responder siempre con un objeto JSON con un único campo "next".
+Los valores válidos para "next" son:
+- "agenteresta"
+- "agentesuma"
+- "FINISH"
+
+Reglas:
+- Delega al agente más adecuado para gestionar la solicitud.
+- Delega a UN SOLO especialista por turno.
+- El bloque "Estado actual del sistema" muestra los campos del estado compartido que los especialistas escriben tras actuar; úsalos para saber si una tarea ya está resuelta y, en ese caso, responde "FINISH".
+- No delegues al mismo agente dos veces para la misma solicitud.
+
+"""
+
+class Router(TypedDict):
+    next: Literal["agenteresta", "agentesuma", "FINISH"]
+
+modelCoordinator = init_chat_model(model="openai:gpt-4o", temperature=0)
+
+def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"
+
+def coordinator_node(state: State) -> Command[Literal["agenteresta", "agentesuma", "__end__"]]:
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}
+
+Estado actual del sistema:
+        - result (Resultado de la operación.): {state.get("result", "No registrado aún")}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + PROFILE1),
+        HumanMessage(content=contexto),
+    ]
+    response = modelCoordinator.with_structured_output(Router).invoke(messages)
+    goto = END if response["next"] == "FINISH" else response["next"]
+    return Command(goto=goto)
+
+def build_structura1():
+    builder = StateGraph(State)
+
+    builder.add_node("coordinator", coordinator_node)
+    builder.add_node("agenteresta", nodeAgenteResta)
+    builder.add_node("agentesuma", nodeAgenteSuma)
+
+    builder.add_edge(START, "coordinator")
+    builder.add_edge("agenteresta", "coordinator")
+    builder.add_edge("agentesuma", "coordinator")
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD16 > subgraph/structura2.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeEscritor
+
+def build_structura2():
+    builder = StateGraph(State)
+
+    builder.add_node("escritor", nodeEscritor)
+
+    builder.add_edge(START, "escritor")
+    builder.add_edge("escritor", END)
+
+    return builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD17 > .env.template 1`] = `
+"# API Keys
+LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com
+LANGSMITH_API_KEY=
+LANGSMITH_PROJECT=
+GOOGLE_API_KEY=
+
+# Configuración de mensajes
+MAX_TOKENS=400
+
+# Configuración de la base de datos
+DB_URI=
+
+"
+`;
+
+exports[`Generator snapshots > MD17 > agents.py 1`] = `
+"# agents.py
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from prompt import PRESPONDEYPARA, PRESPONDEYSIGUE
+from state import State
+from langchain.chat_models import init_chat_model
+
+from langgraph.types import Command
+from langgraph.graph import END
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+
+# Salidas de los nodos
+class AgenteUnoOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+class AgenteDosOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+class AgenteTresOutput(BaseModel):
+    message: str = Field(description="Tu respuesta al usuario.")
+    next: Literal["agenteuno", "agentedos", "agentetres", "END"] = Field(description="Próximo nodo al que delegar dentro del cluster decentralized; END para terminar.")
+
+# Modelos
+modelAgenteUno = init_chat_model(model="google_genai:gemini-2.5-pro", temperature=0).with_structured_output(AgenteUnoOutput)
+modelAgenteDos = init_chat_model(model="google_genai:gemini-2.5-pro", temperature=0).with_structured_output(AgenteDosOutput)
+modelAgenteTres = init_chat_model(model="google_genai:gemini-2.5-pro", temperature=0).with_structured_output(AgenteTresOutput)
+
+
+
+def _system_prompt(profile: str, state) -> str:
+    """Antepone el resumen acumulado de la conversación (si existe) al profile."""
+    resumen = state.get("summary")
+    if resumen:
+        return f"{profile}\\n\\nContexto previo resumido:\\n{resumen}"
+    return profile
+
+# Nodos del grafo
+def nodeAgenteUno(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteUno.invoke(
+        [SystemMessage(content=_system_prompt(PRESPONDEYSIGUE, state))]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agenteuno")]
+    })
+
+def nodeAgenteDos(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteDos.invoke(
+        [SystemMessage(content=_system_prompt(PRESPONDEYPARA, state))]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agentedos")]
+    })
+
+def nodeAgenteTres(state: State) -> Command[Literal["agenteuno", "agentedos", "agentetres", "__end__"]]:
+    """"""
+    result = modelAgenteTres.invoke(
+        [SystemMessage(content=_system_prompt(PRESPONDEYPARA, state))]
+        + state["messages"]
+        
+    )
+    goto = END if result.next == "END" else result.next
+    return Command(goto=goto, update={
+        "messages": [AIMessage(content=result.message, name="agentetres")]
+    })
+"
+`;
+
+exports[`Generator snapshots > MD17 > checkpointer.py 1`] = `
+"from config import DB_URI
+import contextlib
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg import AsyncConnection
+from psycopg.rows import dict_row
+
+
+@contextlib.asynccontextmanager
+async def generate_checkpointer():
+    conn = await AsyncConnection.connect(
+        DB_URI,
+        autocommit=True,
+        row_factory=dict_row
+    )
+    try:
+        checkpointer = AsyncPostgresSaver(conn)
+        await checkpointer.setup()
+        yield checkpointer
+    finally:
+        await conn.close()
+"
+`;
+
+exports[`Generator snapshots > MD17 > config.py 1`] = `
+"# config.py — ARCHIVO GENERADO AUTOMÁTICAMENTE — NO EDITAR A MANO
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
+LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# Configuración de mensajes
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", 1000))
+
+# Configuración de la base de datos
+DB_URI=os.getenv("DB_URI")
+"
+`;
+
+exports[`Generator snapshots > MD17 > graph.py 1`] = `
+"import os
+from config import GOOGLE_API_KEY
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, START, END
+from state import State, should_summarize, summary_node
+from subgraph.RedDescentralizada import build_RedDescentralizada
+
+
+
+# Construcción del grafo
+builder = StateGraph(State)
+
+# Subgrafos como nodos
+RedDescentralizada = build_RedDescentralizada()
+
+builder.add_node("reddescentralizada", RedDescentralizada)
+
+builder.add_node("summary_node", summary_node)
+builder.add_edge("summary_node", END)
+
+# Edges de inicio
+builder.add_edge(START, "reddescentralizada")
+
+# Routers
+
+
+# Transiciones
+builder.add_conditional_edges(
+    "reddescentralizada",
+    should_summarize,
+    {
+        "summary_node": "summary_node",
+        END: END
+    }
+)
+
+# Compilar
+graph = builder.compile()
+"
+`;
+
+exports[`Generator snapshots > MD17 > langgraph.json 1`] = `
+"{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "checkpointer": {
+    "path": "./checkpointer.py:generate_checkpointer"
+  },
+  "env": ".env"
+}
+"
+`;
+
+exports[`Generator snapshots > MD17 > prompt.py 1`] = `
+"PRESPONDEYPARA = """
+Eres un agente de prueba. Responde con una frase muy corta al mensaje
+recibido. No necesitas resolver nada: di simplemente 'listo' y termina la ajecución, pasandole el control a 'END'.
+"""
+
+PRESPONDEYSIGUE = """
+Eres un agente de prueba. Responde con la frase 'Iniciando prueba' y pasa el turno a otro agente que no seas tu mismo.
+"""
+
+"
+`;
+
+exports[`Generator snapshots > MD17 > requirements.txt 1`] = `
+"langchain
+langchain-core
+langchain-google-genai
+langchain-openai
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+tiktoken
+typing-extensions
+"
+`;
+
+exports[`Generator snapshots > MD17 > state/__init__.py 1`] = `
+"# __init__.py
+from state.state import State
+from state.reducers import should_summarize, summary_node
+
+__all__ = ["State", "should_summarize", "summary_node"]
+"
+`;
+
+exports[`Generator snapshots > MD17 > state/reducers.py 1`] = `
+"# reducers.py
+from langchain_core.messages import RemoveMessage, BaseMessage
+from langchain.chat_models import init_chat_model
+from langgraph.graph import END
+import tiktoken
+from config import MAX_TOKENS
+
+llm = init_chat_model("google_genai:gemini-2.5-pro")
+
+def _content_to_text(content) -> str:
+    """Normaliza content a string. Maneja content-as-list (multimodal/tool calls)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") == "text"
+        )
+    return ""
+
+def _count_tokens(messages: list[BaseMessage]) -> int:
+    # tiktoken con encoding de OpenAI como aproximación universal (ver ADR 011).
+    encoder = tiktoken.encoding_for_model("gpt-4o")
+    return sum(len(encoder.encode(_content_to_text(m.content))) for m in messages)
+
+def _safe_split_index(messages: list[BaseMessage]) -> int:
+    """Índice del último HumanMessage. Lo anterior es seguro de borrar
+    sin romper pares AIMessage(tool_calls) ↔ ToolMessage del turno en curso."""
+    for i in range(len(messages) - 1, -1, -1):
+        if messages[i].type == "human":
+            return i
+    return 0
+
+def _format_for_prompt(messages: list[BaseMessage]) -> str:
+    return "\\n".join(f"{m.type}: {_content_to_text(m.content)}" for m in messages)
+
+# Sin anotación de tipo en 'state': LangGraph llama get_type_hints() en los
+# nodos/routers y un forward-ref a State requeriría importarlo en runtime,
+# lo que crearía un ciclo state.py <-> reducers.py en la estrategia MIX.
+def should_summarize(state) -> str:
+    return "summary_node" if _count_tokens(state["messages"]) > MAX_TOKENS else END
+
+async def summary_node(state):
+    messages = state["messages"]
+    split = _safe_split_index(messages)
+
+    # Mensajes a comprimir (todo lo anterior al turno humano en curso).
+    to_compress = messages[:split]
+    if not to_compress:
+        return {}
+
+    existing_summary = state.get("summary")
+    formatted = _format_for_prompt(to_compress)
+
+    if existing_summary:
+        prompt = (
+            "Actualiza el siguiente resumen estructurado integrando los nuevos mensajes. "
+            "Conserva la estructura por secciones y no descartes hechos previos relevantes.\\n\\n"
+            f"Resumen previo:\\n{existing_summary}\\n\\n"
+            f"Nuevos mensajes:\\n{formatted}\\n\\n"
+            "Devuelve el resumen actualizado con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+    else:
+        prompt = (
+            "Resume la siguiente conversación de forma estructurada. "
+            "Sé conciso pero no pierdas información operativa.\\n\\n"
+            f"Conversación:\\n{formatted}\\n\\n"
+            "Devuelve el resumen con estas secciones:\\n"
+            "- Objetivos del usuario\\n"
+            "- Decisiones tomadas\\n"
+            "- Hechos establecidos\\n"
+            "- Pendientes"
+        )
+
+    new_summary = await llm.ainvoke(prompt)
+    summary_text = _content_to_text(new_summary.content)
+
+    # Los mensajes comprimidos se borran del historial. El resumen vive en el
+    # campo \`summary\` del estado, no en \`messages\`: así no se renderiza como un
+    # turno de chat y los agentes lo reciben antepuesto a su propio profile.
+    to_delete = [RemoveMessage(id=m.id) for m in to_compress if m.id is not None]
+
+    return {
+        "messages": to_delete,
+        "summary": summary_text,
+    }
+"
+`;
+
+exports[`Generator snapshots > MD17 > state/state.py 1`] = `
+"# state.py
+from typing import Annotated, Optional
+from typing_extensions import TypedDict
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    # Mensajes
+    messages: Annotated[list, add_messages]
+
+    # Resumen
+    summary: Optional[str]
+
+    # Atributos
+"
+`;
+
+exports[`Generator snapshots > MD17 > subgraph/RedDescentralizada.py 1`] = `
+"from langgraph.graph import StateGraph, START, END
+from state import State
+from agents import nodeAgenteUno, nodeAgenteDos, nodeAgenteTres
+
+def build_RedDescentralizada():
+    builder = StateGraph(State)
+
+    builder.add_node("agenteuno", nodeAgenteUno)
+    builder.add_node("agentedos", nodeAgenteDos)
+    builder.add_node("agentetres", nodeAgenteTres)
+
+    builder.add_edge(START, "agenteuno")
+
+    return builder.compile()
+"
+`;

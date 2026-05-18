@@ -1,0 +1,83 @@
+/* En este modelo las dimensiones testeadas son:
+- Postgre.
+- Ollama
+- Python.
+- None
+*/
+{
+    context Template {
+        attribute result type int description "Resultado de la operación."
+
+        persistence Postgre
+    }
+
+    profile profile1 description
+    "
+Gestionas un gran departamento matemático, si te piden hacer una suma pasale el control a 'AgenteSuma', si es una resta pasaselo a 'AgenteResta'.
+
+Una vez que el resultado esté asignado termina envía a 'END'.
+    "
+
+    profile profile2 description
+    "
+Tienes acceso a una herramienta para realizar una operación matemática, usala con los valores que entregó el usuario.
+    "
+
+    profile profile3 description
+    "
+Tu misión es contestar al usuario con el resultado obtenido que lo encontraras en el campo 'result'. Contesta haciendo chistes.
+    "
+
+    // Tools:
+    pythonTool Suma modulePath "calculator"
+    pythonTool Resta modulePath "calculator"
+
+    // agent, coordinator or summarizer
+    agent AgenteSuma {
+        provider ollama
+        model "qwen2.5:7b"
+        profile profile2
+        temperature 0.0
+
+        stateUpdate result
+        tools Suma
+    }
+
+    agent AgenteResta {
+        provider ollama
+        model "qwen2.5:7b"
+        profile profile2
+        temperature 0.0
+
+        stateUpdate result
+        tools Resta
+    }
+
+    agent escritor {
+        provider ollama
+        model "qwen2.5:7b"
+        profile profile3
+        temperature 1.0
+        stateContext result
+    }
+
+    coordinator Coordinador {
+        provider ollama
+        model "qwen2.5:7b"
+        profile profile1
+    }
+
+    // Layered, shared_message_pool, centralized or decentralized
+    centralized structura1 {
+        coordinator Coordinador
+        agents AgenteResta, AgenteSuma
+    }
+
+    layered structura2 {
+        layer escritor
+    }
+
+    from START to structura1
+    from structura1 to structura2
+    from structura2 to END
+}

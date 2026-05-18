@@ -21,7 +21,7 @@ function providerRequirement(provider: string): string | null {
     switch (provider) {
         case 'openai':    return 'langchain-openai';
         case 'anthropic': return 'langchain-anthropic';
-        case 'google':    return 'langchain-google-genai';
+        case 'google_genai':    return 'langchain-google-genai';
         case 'ollama':    return 'langchain-ollama';
         default:          return null;
     }

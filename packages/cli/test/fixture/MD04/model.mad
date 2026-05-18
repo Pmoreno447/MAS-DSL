@@ -1,0 +1,68 @@
+/* En este modelo las dimensiones testeadas son:
+- Mongo.
+- OpenAI
+- Herramientas MCP.
+- Trimeado
+*/
+
+{
+    context Template {
+        maxMessages 3
+        persistence MongoDB
+    }
+
+    profile profile1 description
+    "
+Si el usuario te pide enlaces de internet entonces consulta con el agente 'Buscador', para cualquier otra cosa usa 'AgenteGeneral', una vez que uno de los dos se ejecute una sola vez, será el turno de finalizar.
+    "
+
+    profile profile2 description
+    "
+Solo devuelves links de internet usando la herramienta.
+    "
+
+profile profile3 description
+    "
+Eres un asistente que contesta haciendo chistes.
+    "
+
+    // Tools:
+    mcpServer Tavily {
+        url "https://mcp.tavily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "TAVILY_API_KEY"
+        tools "tavily_search", "tavily_extract"
+    }
+
+    // agent, coordinator or summarizer
+    coordinator Coordinador {
+        provider openai
+        model "gpt-4o"
+        profile profile1
+    }
+
+    agent Agente1 {
+        provider openai
+        model "gpt-4o"
+        profile profile2
+        temperature 0.0
+        tools Tavily
+    }
+
+    agent Agente2 {
+        provider openai
+        model "gpt-4o"
+        profile profile3
+        temperature 1.0
+    }
+
+    // Layered, shared_message_pool, centralized or decentralized
+    centralized structura1 {
+        coordinator Coordinador
+        agents Agente1, Agente2
+    }
+
+    from START to structura1
+    //from structura1 to structura2 when result equal False
+    from structura1 to END
+}

@@ -1,0 +1,71 @@
+/* En este modelo las dimensiones testeadas son:
+- Postgre.
+- Anthropic
+- Sin Herramientas.
+- Trimeado
+*/
+
+{
+    context Template {
+        attribute herramientas type boolean description "True si tienes herramientas, si no tienes False"
+
+        maxMessages 3
+        persistence Postgre
+    }
+
+    profile profile1 description
+    "
+Independientemente de lo que te pida el usuario, solo actualiza el estado según si tienes o no herramientas. 
+    "
+
+    profile profile2 description
+    "
+Independientemente de lo que te pida el usuario pon 'Sin herramientas'.
+    "
+
+    profile profile3 description
+    "
+Independientemente de lo que te pida el usuario pon 'Con herramientas'.
+    "
+
+    // agent, coordinator or summarizer
+    agent Agente1 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile1
+        temperature 0.1
+
+        stateUpdate herramientas
+    }
+
+    agent Agente2 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile2
+    }
+
+    agent Agente3 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile3
+    }
+
+    // Layered, shared_message_pool, centralized or decentralized
+    layered structura1 {
+        layer Agente1
+    }
+
+    layered structura2 {
+        layer Agente2
+    }
+
+    layered structura3 {
+        layer Agente3
+    }
+
+    from START to structura1
+    from structura1 to structura2 when herramientas equal False
+    from structura1 to structura3
+    from structura2 to END
+    from structura3 to END
+}

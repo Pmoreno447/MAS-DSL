@@ -1,0 +1,61 @@
+ /* En este modelo las dimensiones testeadas son:
+- InMemory.
+- Anthropic
+- Python.
+- None
+*/
+{
+    context Template {
+        persistence inMemorySave
+    }
+
+    profile profile1 description
+    "
+Si el usuario pide un resultado de la web le das el control a 'agente1', sino a 'agente2' y una vez que uno de los dos ya haya actuado, pasa a 'END', es decir, se ejecuta UNA SOLA VEZ UNO DE LOS DOS AGENTES Y DESPUÉS ACABA LA EJECUCIÓN.
+    "
+
+    profile profile2 description
+    "
+Solo puedes usar la herramienta buscadorWeb para obtener resultados de internet, redacta con ello una respuesta en tono formal.
+    "
+
+    profile profile3 description
+    "
+Contesta como si fueses un cavernicola.
+    "
+
+    // Tools:
+    pythonTool buscadorWeb modulePath "utils"
+
+
+    // agent, coordinator or summarizer
+    coordinator c1{
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile1
+    }
+
+    agent Agente1 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile2
+        temperature 0.0
+        tools buscadorWeb
+    }
+
+    agent Agente2 {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile profile3
+    }
+
+    // Layered, shared_message_pool, centralized or decentralized
+    centralized structura1{
+        coordinator c1
+        agents Agente1, Agente2
+    }
+
+    from START to structura1
+    //from structura1 to structura2 when result equal False
+    from structura1 to END
+}

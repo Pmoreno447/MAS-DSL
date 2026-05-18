@@ -34,16 +34,32 @@ function generateCoordinatorModel(coordinator: Coordinator): string {
     return `modelCoordinator = init_chat_model(${params.join(', ')})`;
 }
 
-function generateContextBlock(stateFields: Map<string, { name: string; description: string }>): string {
+// Sección de estado embebida en el f-string del coordinador. Vacía si el
+// sistema no declara atributos de estado.
+function generateStateSection(stateFields: Map<string, { name: string; description: string }>): string {
     if (stateFields.size === 0) return '';
     const lines = [...stateFields.values()]
         .map(f => `        - ${f.name} (${f.description}): {state.get("${f.name}", "No registrado aún")}`)
         .join('\n');
-    return `+ [HumanMessage(content=f"""
+    return `
+
 Estado actual del sistema:
-${lines}
-    """)]`;
+${lines}`;
 }
+
+// Helper Python que serializa el historial a texto etiquetado por autor. El
+// coordinador lo usa para decidir el routing sin participar en el chat: así el
+// input que recibe el modelo termina siempre en un turno humano (requisito de
+// Anthropic) y funciona igual en todos los providers.
+const FORMAT_CONVERSATION_HELPER = `def _format_conversation(messages) -> str:
+    """Serializa el historial a texto etiquetado por autor."""
+    lineas = []
+    for m in messages:
+        autor = getattr(m, "name", None) or m.type
+        contenido = m.content if isinstance(m.content, str) else str(m.content)
+        if contenido:
+            lineas.append(f"- {autor}: {contenido}")
+    return "\\n".join(lineas) if lineas else "(sin mensajes todavía)"`;
 
 function generateRoutingPreambleConstant(memberNames: string[]): string {
     const agentList = memberNames.map(n => `- "${n}"`).join('\n');
@@ -62,15 +78,24 @@ Reglas:
 """`;
 }
 
-function generateCoordinatorNode(coordinator: Coordinator, memberNames: string[], contextBlock: string): string {
+function generateCoordinatorNode(coordinator: Coordinator, memberNames: string[], stateSection: string): string {
     const profileName = coordinator.profile.ref!.name.toUpperCase();
     const returnLiteral = [...memberNames.map(n => `"${n}"`), '"__end__"'].join(', ');
     return `def coordinator_node(state: State) -> Command[Literal[${returnLiteral}]]:
-    messages = (
-        [SystemMessage(content=COORDINADOR_ENRUTAMIENTO + ${profileName})]
-        + state["messages"]
-        ${contextBlock}
-    )
+    # El coordinador no participa en el chat: recibe la conversación como texto
+    # dentro de un único HumanMessage. El input termina siempre en turno humano.
+    resumen = state.get("summary")
+    bloque_resumen = f"Resumen de la conversación previa:\\n{resumen}\\n\\n" if resumen else ""
+    contexto = f"""
+{bloque_resumen}Conversación hasta ahora:
+{_format_conversation(state["messages"])}${stateSection}
+
+Decide el siguiente paso: delega al agente adecuado o responde "FINISH" si la tarea ya está resuelta.
+"""
+    messages = [
+        SystemMessage(content=COORDINADOR_ENRUTAMIENTO + ${profileName}),
+        HumanMessage(content=contexto),
+    ]
     response = modelCoordinator.with_structured_output(Router).invoke(messages)
     goto = END if response["next"] == "FINISH" else response["next"]
     return Command(goto=goto)`;
@@ -113,8 +138,8 @@ export function generateCentralizedSubgraph(centralized: Centralized, destinatio
 
     const routerClass        = generateRouterClass(memberNames);
     const coordinatorModel   = generateCoordinatorModel(coordinator);
-    const contextBlock       = generateContextBlock(stateFields);
-    const coordinatorNode    = generateCoordinatorNode(coordinator, memberNames, contextBlock);
+    const stateSection       = generateStateSection(stateFields);
+    const coordinatorNode    = generateCoordinatorNode(coordinator, memberNames, stateSection);
     const supervisorGraph    = generateSupervisorGraph(centralized);
     const nodeImports        = agents.map(a => generateNodeName(a)).join(', ');
     const usesOllama         = coordinator.provider === 'ollama';
@@ -136,6 +161,8 @@ ${routingPreamble}
 ${routerClass}
 
 ${coordinatorModel}
+
+${FORMAT_CONVERSATION_HELPER}
 
 ${coordinatorNode}
 
