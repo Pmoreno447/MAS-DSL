@@ -71,3 +71,11 @@ Las herramientas MCP no pueden tener apikeys con el mismo nombre.
 ### R013 — Nombres únicos en el sistema
 Todo elemento con nombre (contexto, atributos, perfiles, herramientas, actores y estructuras de comunicación) debe tener un nombre único dentro del sistema. Langium permite por defecto nombres duplicados y resuelve las referencias a la primera coincidencia de forma silenciosa, lo que produciría código generado con identificadores colisionantes. Se opta por un espacio de nombres global (un nombre no puede repetirse ni siquiera entre categorías distintas) para evitar ambigüedad en el generador.
 - **Detectada en:** Fase de pruebas de validación.
+
+### R014 — Nodos summarizer no tienen perfil.
+Los agentes Summarizer no pueden tener asignados un perfil ya que se les generá uno por defecto.
+- **Detectada en:** Fase de pruebas de validación.
+
+### R015 — Un nodo solo pertenece a una estructura de comunicación
+Un agente no puede pertenecer a varias estructuras de comunicación a la vez, porque el código generado es distinto para un layered que para un decentralized.
+- **Detectada en:** Fase de pruebas de validación.

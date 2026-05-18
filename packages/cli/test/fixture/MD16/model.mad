@@ -36,7 +36,6 @@ Tu misión es contestar al usuario con el resultado obtenido que lo encontraras 
     summarizer Resumidor {
         provider openai
         model "gpt-4o"
-        profile profile1
         tokenTrigger 400
     }
 

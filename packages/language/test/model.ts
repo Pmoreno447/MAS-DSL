@@ -560,13 +560,11 @@ export const R09_INV = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
     }
 
     summarizer ResumenInicioDos {
         provider openai
         model "gpt-4o"
-        profile p
     }
 
     layered l {
@@ -595,7 +593,6 @@ export const R09 = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
     }
 
     layered l {
@@ -626,7 +623,6 @@ export const R10_INV_maxMesages = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
     }
 
     layered l {
@@ -655,7 +651,6 @@ export const R10_INV_tokenTrigger = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
         tokenTrigger 0
     }
 
@@ -686,7 +681,6 @@ export const R10_INV_maxToken = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
     }
 
     layered l {
@@ -716,7 +710,6 @@ export const R10_INV_timeOut = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
     }
 
     layered l {
@@ -746,7 +739,6 @@ export const R10_INV_maxRetries = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
     }
 
     layered l {
@@ -779,7 +771,6 @@ export const R10 = `
     summarizer ResumenInicio {
         provider openai
         model "gpt-4o"
-        profile p
         tokenTrigger 4500
     }
 
@@ -918,4 +909,88 @@ export const R12 = `
 
     from START to l
     from l to END
+}`
+
+export const R14_INV = `{
+    context c {
+        persistence inMemorySave
+    }
+
+    profile p description "Un Prompt"
+
+    mcpServer Tavily1 {
+        url "https://mcp.taddvily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "tavisly"
+        tools "tavily_search"
+    }
+
+    mcpServer Tavily2 {
+        url "https://mcp.tassvily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "tavilay"
+        tools "tavily_extract"
+    }
+
+    agent NombreAgente {
+        provider openai
+        model "gpt-4o"
+        profile p
+    }
+
+    summarizer Resumidor {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile p
+    }
+
+    layered l {
+        layer NombreAgente
+    }
+    
+
+    from START to l
+    from l to END
+}`
+
+export const R15_INV = `
+{
+    context c {
+        persistence inMemorySave
+    }
+
+    profile p description "Un Prompt"
+
+    mcpServer Tavily1 {
+        url "https://mcp.taddvily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "tavisly"
+        tools "tavily_search"
+    }
+
+    mcpServer Tavily2 {
+        url "https://mcp.tassvily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "tavilay"
+        tools "tavily_extract"
+    }
+
+    agent NombreAgente {
+        provider openai
+        model "gpt-4o"
+        profile p
+    }
+
+    layered l {
+        layer NombreAgente
+    }
+
+    layered l2 {
+        layer NombreAgente
+    }
+    
+
+    from START to l
+    from l to l2
+    from l2 to END
 }`

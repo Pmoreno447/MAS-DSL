@@ -35,7 +35,6 @@ Contesta de forma lo más educada posible.
     summarizer Agente2 {
         provider anthropic
         model "claude-sonnet-4-6"
-        profile profile1
         tokenTrigger 300
     }
 

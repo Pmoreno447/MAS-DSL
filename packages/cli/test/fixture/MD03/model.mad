@@ -58,7 +58,6 @@ Tienes acceso a una herramienta para realizar una operación matemática, usala 
     summarizer Resumidor {
         provider google_genai
         model "gemini-flash-latest"
-        profile profile1
         tokenTrigger 500
     }
 

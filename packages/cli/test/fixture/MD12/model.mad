@@ -25,7 +25,6 @@ Sé educado con el usuario. Contesta de forma excesivamente larga.
     summarizer Resumidor {
         provider openai
         model "gpt-4o"
-        profile profile1
         tokenTrigger 800
     }
 

@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
 import { createMultiAgentDslServices, LLMMultiAgentSystem } from "multi-agent-dsl-language";
-import { MODELO_BASE, R01_INV, R02, R02_INV, R03_INV, R04, R04_INV, R05_INV, R06_BOOL, R06_INT, R06_INV_BOOL, R06_INV_INT, R06_INV_STR, R06_STR, R07_INV, R08_INF, R08_INV_INF, R08_INV_SUP, R08_SUP, R09, R09_INV, R10, R10_INV_maxMesages, R10_INV_maxRetries, R10_INV_maxToken, R10_INV_timeOut, R10_INV_tokenTrigger, R11_INV, R12, R12_INV, R13_INV } from "./model.js";
+import { MODELO_BASE, R01_INV, R02, R02_INV, R03_INV, R04, R04_INV, R05_INV, R06_BOOL, R06_INT, R06_INV_BOOL, R06_INV_INT, R06_INV_STR, R06_STR, R07_INV, R08_INF, R08_INV_INF, R08_INV_SUP, R08_SUP, R09, R09_INV, R10, R10_INV_maxMesages, R10_INV_maxRetries, R10_INV_maxToken, R10_INV_timeOut, R10_INV_tokenTrigger, R11_INV, R12, R12_INV, R13_INV, R14_INV, R15_INV } from "./model.js";
 
 let parse: ReturnType<typeof parseHelper<LLMMultiAgentSystem>>;
 
@@ -82,4 +82,8 @@ testRestriccion("R11", "Layered sin ciclos", R11_INV)
 testRestriccion("R12", "MCP con distintas API KEY", R12_INV, R12)
 
 testRestriccion("R13", "Nombres únicos en el sistema", R13_INV)
+
+testRestriccion("R14", "Sumarizer no puede tener perfil", R14_INV)
+
+testRestriccion("R15", "Un nodo no puede pertenece a varias estructuras de comunicación", R15_INV)
 

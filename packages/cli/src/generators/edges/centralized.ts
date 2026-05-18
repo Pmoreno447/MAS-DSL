@@ -79,7 +79,7 @@ Reglas:
 }
 
 function generateCoordinatorNode(coordinator: Coordinator, memberNames: string[], stateSection: string): string {
-    const profileName = coordinator.profile.ref!.name.toUpperCase();
+    const profileName = coordinator.profile!.ref!.name.toUpperCase();
     const returnLiteral = [...memberNames.map(n => `"${n}"`), '"__end__"'].join(', ');
     return `def coordinator_node(state: State) -> Command[Literal[${returnLiteral}]]:
     # El coordinador no participa en el chat: recibe la conversación como texto
@@ -134,7 +134,7 @@ export function generateCentralizedSubgraph(centralized: Centralized, destinatio
     const agents = centralized.agents.map(a => a.ref!);
     const stateFields = collectStateFields(agents);
     const memberNames = agents.map(a => a.name.toLowerCase());
-    const profileName = coordinator.profile.ref!.name.toUpperCase();
+    const profileName = coordinator.profile!.ref!.name.toUpperCase();
 
     const routerClass        = generateRouterClass(memberNames);
     const coordinatorModel   = generateCoordinatorModel(coordinator);

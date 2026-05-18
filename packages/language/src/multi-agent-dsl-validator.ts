@@ -1,5 +1,5 @@
 import type { AstNode, ValidationAcceptor, ValidationChecks } from 'langium';
-import { Agent, CommTransition, Context, Coordinator, isBoolLiteral, isIntLiteral, isMCPServer, isStringLiteral, Layered, LLMMultiAgentSystem, MultiAgentDslAstType, Summarizer } from './generated/ast.js';
+import { Agent, CommTransition, Context, Coordinator, isBoolLiteral, isIntLiteral, isLayered, isMCPServer, isStringLiteral, Layered, LLMMultiAgentSystem, MultiAgentDslAstType, Summarizer } from './generated/ast.js';
 import type { MultiAgentDslServices } from './multi-agent-dsl-module.js';
 import { modelsFor } from './models.js';
 
@@ -11,10 +11,10 @@ export function registerValidationChecks(services: MultiAgentDslServices) {
     const checks: ValidationChecks<MultiAgentDslAstType> = {
         Agent: [validator.checkAgentModel, validator.checkAgentTemperature, validator.checkAgentPositiveValues],
         Coordinator: [validator.checkCoordinatorModel, validator.checkCoordinatorTemperature],
-        Summarizer: [validator.checkSummarizerModel, validator.checkSummarizerTemperature, validator.checkSummarizerPositiveValues],
+        Summarizer: [validator.checkSummarizerModel, validator.checkSummarizerTemperature, validator.checkSummarizerPositiveValues, validator.checkSummarizerNoProfile],
         Context: validator.checkContextPositiveValues,
         Layered: validator.checkLayeredNoCycles,
-        LLMMultiAgentSystem: [validator.checkCommunicationStructuresConnected, validator.checkMcpServer, validator.checkMcpApiKeyUnique, validator.uniqueStartPoint, validator.checkDuplicatedArcs, validator.checkUniqueTransition, validator.checkTransitionCompatibility, validator.checkSummarizerUnique, validator.checkUniqueNames],
+        LLMMultiAgentSystem: [validator.checkCommunicationStructuresConnected, validator.checkMcpServer, validator.checkMcpApiKeyUnique, validator.uniqueStartPoint, validator.checkDuplicatedArcs, validator.checkUniqueTransition, validator.checkTransitionCompatibility, validator.checkSummarizerUnique, validator.checkUniqueNames, validator.checkAgentUniqueStructure],
         CommTransition: validator.checkConditionTypeCompatibility,
     };
     registry.register(checks, validator);
@@ -197,6 +197,13 @@ export class MultiAgentDslValidator {
         checkPositive(summarizer, 'tokenTrigger', summarizer.tokenTrigger, accept);
     }
 
+    // R14: El nodo Summarizer no puede tener perfil asignado
+    checkSummarizerNoProfile(summarizer: Summarizer, accept: ValidationAcceptor): void {
+        if (summarizer.profile) {
+            accept('error', 'El nodo Summarizer no puede tener un perfil asignado.', { node: summarizer, property: 'profile', code: 'R14' });
+        }
+    }
+
     checkContextPositiveValues(context: Context, accept: ValidationAcceptor): void {
         checkPositive(context, 'maxMessages', context.maxMessages, accept);
     }
@@ -256,6 +263,39 @@ export class MultiAgentDslValidator {
         for (const node of named) {
             if (counts.get(node.name)! > 1) {
                 accept('error', `El nombre "${node.name}" está duplicado: cada elemento del sistema debe tener un nombre único.`, { node, property: 'name', code: 'R13' });
+            }
+        }
+    }
+
+    // R15: Un agente solo puede pertenecer a una estructura de comunicación
+    checkAgentUniqueStructure(system: LLMMultiAgentSystem, accept: ValidationAcceptor): void {
+        const agentStructureCount = new Map<string, number>();
+
+        for (const structure of system.communicationStructures) {
+            const names: string[] = isLayered(structure)
+                ? structure.layers.map(l => l.agent?.ref?.name).filter((n): n is string => !!n)
+                : structure.agents.map(a => a.ref?.name).filter((n): n is string => !!n);
+
+            for (const name of names) {
+                agentStructureCount.set(name, (agentStructureCount.get(name) ?? 0) + 1);
+            }
+        }
+
+        for (const structure of system.communicationStructures) {
+            if (isLayered(structure)) {
+                for (const layer of structure.layers) {
+                    const name = layer.agent?.ref?.name;
+                    if (name && (agentStructureCount.get(name) ?? 0) > 1) {
+                        accept('error', `El agente "${name}" pertenece a más de una estructura de comunicación.`, { node: layer, property: 'agent', code: 'R15' });
+                    }
+                }
+            } else {
+                for (const ref of structure.agents) {
+                    const name = ref.ref?.name;
+                    if (name && (agentStructureCount.get(name) ?? 0) > 1) {
+                        accept('error', `El agente "${name}" pertenece a más de una estructura de comunicación.`, { node: structure, code: 'R15' });
+                    }
+                }
             }
         }
     }

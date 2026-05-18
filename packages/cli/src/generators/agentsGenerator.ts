@@ -119,7 +119,7 @@ function generateNode(agent: Agent, model: LLMMultiAgentSystem): string {
     const agentPascal = agent.name.charAt(0).toUpperCase() + agent.name.slice(1);
     const nodeName = generateNodeName(agent);
     const modelName = `model${agentPascal}`;
-    const profileName = agent.profile.ref!.name.toUpperCase();
+    const profileName = agent.profile!.ref!.name.toUpperCase();
     const description = agent.description ?? '';
     const className = agentPascal + 'Output';
 

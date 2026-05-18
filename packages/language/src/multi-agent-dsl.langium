@@ -58,7 +58,7 @@ type Actor = Agent | Summarizer | Coordinator;
 fragment ActorBase:
     name=ID '{'
         ProviderModel
-        'profile' profile=[Profile]
+        ('profile' profile=[Profile])?
         ('temperature' temperature = FLOAT)?;
 
 

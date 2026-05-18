@@ -27,7 +27,6 @@ Usa la herramienta cuando el usuario lo pida y contestale con un solo enlace que
     summarizer Resumidor{
         provider anthropic
         model "claude-sonnet-4-6"
-        profile profile1
         tokenTrigger 400
     }
 

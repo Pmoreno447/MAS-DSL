@@ -57,7 +57,6 @@ Contesta como si fueses un cavernicola.
     summarizer Resumidor {
         provider ollama
         model "qwen2.5:7b"
-        profile profile1
         tokenTrigger 500
     }
 
