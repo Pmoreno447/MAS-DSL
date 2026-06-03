@@ -1,7 +1,7 @@
     
 {
     context bdTester {
-        persistence inMemorySave
+        persistence Postgre
     }
 
     profile agente1 description
@@ -29,8 +29,8 @@
     }
 
     layered example {
-        layer first level 1 next second agent Agent1
-        layer second level 2 agent Agent2
+        layer Agent1 next Agent2
+        layer Agent2
     }
 
     from START to example

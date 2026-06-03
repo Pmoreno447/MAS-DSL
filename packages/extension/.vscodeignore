@@ -1,2 +1,16 @@
+# Fuentes y configuración de build (ya bundleado en out/)
+src/**
+esbuild.mjs
+tsconfig.json
+*.tsbuildinfo
+
+# Sourcemaps (innecesarios en el paquete publicado)
+out/**/*.map
+
+# Artefactos del scaffolding de Langium
+langium-quickstart.md
+
+# Entornos de desarrollo y test
 .vscode/**
 .vscode-test/**
+node_modules/**

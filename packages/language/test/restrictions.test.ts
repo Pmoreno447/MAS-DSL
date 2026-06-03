@@ -2,7 +2,22 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
 import { createMultiAgentDslServices, LLMMultiAgentSystem } from "multi-agent-dsl-language";
-import { MODELO_BASE, R01_INV, R02, R02_INV, R03_INV, R04, R04_INV, R05_INV, R06_BOOL, R06_INT, R06_INV_BOOL, R06_INV_INT, R06_INV_STR, R06_STR, R07_INV, R08_INF, R08_INV_INF, R08_INV_SUP, R08_SUP, R09, R09_INV, R10, R10_INV_maxMesages, R10_INV_maxRetries, R10_INV_maxToken, R10_INV_timeOut, R10_INV_tokenTrigger, R11_INV, R12, R12_INV, R13_INV, R14_INV, R15_INV } from "./model.js";
+import {MODELO_BASE} from "./models/BASE.js";
+import {R01_INV} from "./models/R01.js";
+import {R02, R02_INV} from "./models/R02.js";
+import { R03_INV } from "./models/R03.js";
+import { R04, R04_INV } from "./models/R04.js";
+import { R05_INV } from "./models/R05.js";
+import { R06_BOOL, R06_INT, R06_STR, R06_INV_BOOL, R06_INV_INT, R06_INV_STR } from "./models/R06.js";
+import { R07_INV } from "./models/R07.js";
+import { R08_INF, R08_SUP, R08_INV_INF, R08_INV_SUP } from "./models/R08.js";
+import { R09, R09_INV } from "./models/R09.js";
+import { R10, R10_INV_maxMesages, R10_INV_maxRetries, R10_INV_maxToken, R10_INV_timeOut, R10_INV_tokenTrigger } from "./models/R10.js";
+import { R11_INV } from "./models/R11.js";
+import { R12, R12_INV } from "./models/R12.js";
+import { R13_INV } from "./models/R13.js";
+import { R14_INV } from "./models/R14.js";
+import { R15_INV } from "./models/R15.js";
 
 let parse: ReturnType<typeof parseHelper<LLMMultiAgentSystem>>;
 

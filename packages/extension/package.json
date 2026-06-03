@@ -1,9 +1,23 @@
 {
-    "name": "vscode-multiAgentDSL",
-    "description": "The extension specific package",
-    "version": "0.0.1",
+    "name": "vscode-multiagentdsl",
+    "description": "DSL para definir sistemas multi-agente con IA. Genera código LangGraph listo para ejecutar con soporte de persistencia y despliegue Docker.",
+    "version": "1.0.0",
     "displayName": "multiAgentDSL",
-    "publisher": "pmoreno",
+    "publisher": "pmorenoc",
+    "license": "MIT",
+    "icon": "icons/mad.png",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Pmoreno447/MAS-DSL"
+    },
+    "keywords": [
+        "multi-agent",
+        "AI",
+        "LLM",
+        "LangGraph",
+        "DSL",
+        "agent"
+    ],
     "type": "module",
     "engines": {
         "vscode": "^1.67.0"
@@ -48,10 +62,21 @@
                 "title": "Ver diagrama del modelo",
                 "category": "multiAgentDSL",
                 "icon": "$(graph)"
+            },
+            {
+                "command": "multi-agent-dsl.help",
+                "title": "Ayuda / Referencia",
+                "category": "multiAgentDSL",
+                "icon": "$(book)"
             }
         ],
         "menus": {
             "editor/title": [
+                {
+                    "command": "multi-agent-dsl.help",
+                    "when": "resourceExtname == .mad",
+                    "group": "navigation"
+                },
                 {
                     "command": "multi-agent-dsl.preview",
                     "when": "resourceExtname == .mad",
@@ -71,6 +96,9 @@
                 {
                     "command": "multi-agent-dsl.preview",
                     "when": "resourceExtname == .mad"
+                },
+                {
+                    "command": "multi-agent-dsl.help"
                 }
             ]
         }

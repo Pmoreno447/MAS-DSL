@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node.js';
 import { generateCommand } from './generate.js';
 import { previewCommand, registerPreviewRefresh } from './preview.js';
+import { helpCommand } from './help.js';
 
 let client: LanguageClient;
 
@@ -13,6 +14,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(
         vscode.commands.registerCommand('multi-agent-dsl.generate', generateCommand),
         vscode.commands.registerCommand('multi-agent-dsl.preview', () => previewCommand(context)),
+        vscode.commands.registerCommand('multi-agent-dsl.help', () => helpCommand(context)),
         registerPreviewRefresh(context)
     );
 }

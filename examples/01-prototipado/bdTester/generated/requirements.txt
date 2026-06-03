@@ -1,0 +1,11 @@
+langchain
+langchain-core
+langchain-openai
+langgraph
+langgraph-checkpoint-postgres
+langgraph-cli[inmem]
+langsmith
+psycopg[binary]
+pydantic
+python-dotenv
+typing-extensions
