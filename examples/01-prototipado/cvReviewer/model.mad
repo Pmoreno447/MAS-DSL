@@ -28,7 +28,7 @@
         persistence inMemorySave
     }
 
-    profile Extractor description 
+    profile ExtractorProfile description 
     "
 Eres un extractor de datos de RRHH experto. Dado el texto bruto de un CV, extrae la siguiente información de forma estructurada:
     - Nombre completo del candidato
@@ -40,7 +40,7 @@ Eres un extractor de datos de RRHH experto. Dado el texto bruto de un CV, extrae
 Sé preciso y extrae únicamente la información mencionada explícitamente en el CV. Si no encuentras algún campo, devuelve null.
     "
 
-    profile Evaluator description
+    profile EvaluatorProfile description
     "
 Eres un evaluador senior de RRHH. Estamos buscando un desarrollador backend con el siguiente perfil:
 
@@ -60,7 +60,7 @@ Dado los datos estructurados extraídos del CV del candidato, evalúa su perfil 
 Sé objetivo y basa tu evaluación estrictamente en los datos extraídos frente a los requisitos del puesto.
     "
 
-    profile ReportGenerator description
+    profile ReportGeneratorProfile description
     "
 Eres un redactor de informes de RRHH. Dado los datos extraídos del candidato y los resultados de su evaluación, genera un informe profesional y conciso para el equipo de RRHH que incluya:
     - Un breve resumen del candidato
@@ -71,7 +71,7 @@ Eres un redactor de informes de RRHH. Dado los datos extraídos del candidato y 
 Escribe en un tono claro y profesional adecuado para la toma de decisiones de RRHH. 
     "
 
-    profile Notifier description
+    profile NotifierProfile description
     "
 Eres un asistente de notificaciones de RRHH. Dado el resultado de la evaluación de un candidato, tu tarea es:
     - Comprobar si la puntuación del candidato es estrictamente superior a 8
@@ -79,10 +79,6 @@ Eres un asistente de notificaciones de RRHH. Dado el resultado de la evaluación
     - Si la puntuación es 8 o inferior, no enviar ningún correo y simplemente indicar que el candidato no alcanza el umbral de notificación
 
 El tono del correo debe ser cálido, profesional y motivador. No reveles la puntuación numérica al candidato. No inventes datos: utiliza únicamente la información recibida del informe de evaluación.
-    "
-    
-    profile resumen description
-    "
     "
 
     // Herramientas
@@ -92,14 +88,14 @@ El tono del correo debe ser cálido, profesional y motivador. No reveles la punt
     agent Extractor {
         provider openai
         model "gpt-5-nano"
-        profile Extractor
+        profile ExtractorProfile
         stateUpdate candidateName, candidateEmail, yearsExperience, skills, educationLevel, language
     }
 
     agent Evaluator {
         provider openai
         model "gpt-5-nano"
-        profile Evaluator
+        profile EvaluatorProfile
         stateContext candidateName, candidateEmail, yearsExperience, skills, educationLevel, language
         stateUpdate score, meetRequirement, strengths, weaknesses
     }
@@ -107,7 +103,7 @@ El tono del correo debe ser cálido, profesional y motivador. No reveles la punt
     agent ReportGenerator {
         provider openai
         model "gpt-5-nano"
-        profile ReportGenerator
+        profile ReportGeneratorProfile
         stateContext candidateName, candidateEmail, yearsExperience, skills, educationLevel, language, score, meetRequirement, strengths, weaknesses
         stateUpdate reportText, recommendation
     }
@@ -115,7 +111,7 @@ El tono del correo debe ser cálido, profesional y motivador. No reveles la punt
     agent Notifier {
         provider openai
         model "gpt-5-nano"
-        profile Notifier
+        profile NotifierProfile
         stateContext candidateName, candidateEmail, score, reportText, recommendation
         tools notifyByEmail
     }
@@ -123,16 +119,15 @@ El tono del correo debe ser cálido, profesional y motivador. No reveles la punt
     summarizer Test {
         provider openai
         model "gpt-5-nano"
-        profile resumen
         tokenTrigger 1000
     }
 
     // Modelo de comunicacion
     layered Grafo {
-        layer NotifierLayer level 4 agent Notifier
-        layer ReportLayer level 3 next NotifierLayer agent ReportGenerator
-        layer EvaluatorLayer level 2 next ReportLayer agent Evaluator
-        layer ExtractorLayer level 1 next EvaluatorLayer agent Extractor 
+        layer Notifier
+        layer ReportGenerator next Notifier 
+        layer Evaluator next ReportGenerator 
+        layer Extractor next Evaluator  
     }
 
     from START to Grafo

@@ -38,7 +38,7 @@ Para cualquier otra petición que no encaje en estas dos categorías, responde: 
     }
 
     layered Grafo {
-        layer programadorSenior level 1 agent senior
+        layer senior
     }
 
     from START to Grafo

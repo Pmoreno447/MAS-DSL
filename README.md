@@ -1,136 +1,106 @@
-# Multi-Agent DSL — MaaS DSL
+# multiAgentDSL
 
-> **Estado actual:** Iteración 5 del metamodelo. El metamodelo se considera
-> estable a partir de esta versión; las futuras modificaciones se esperan
-> como extensiones no rupturistas. Consulta el historial completo de
-> iteraciones en [`docs/evolucionMetamodelo.md`](./docs/evolucionMetamodelo.md).
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?logo=langchain&logoColor=white)
+![VSCode](https://img.shields.io/badge/VSCode-007ACC?logo=visualstudiocode&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-DSL (Domain-Specific Language) para la especificación de sistemas multi-agente basados en LLMs (MaaS — Multi-Agent as a Service). Desarrollado como parte del TFG en ingeniería informática con Langium sobre Node.js/TypeScript.
+> Trabajo de Fin de Grado — Universidad de Extremadura · Ingeniería Informática
 
----
-
-## Versionado
-
-El proyecto sigue una convención de versiones con tres niveles (`vX.Y.Z`):
-
-
-- **X** — versión de release. Permanece en `0` durante el desarrollo del TFG. Pasará a `1` cuando el sistema se considere completo y publicable.
-- **Y** —  iteración del metamodelo. Incrementa cuando se introduce una nueva versión del metamodelo con cambios estructurales. El historial completo de iteraciones está en [`docs/evolucionMetamodelo.md`](./docs/evolucionMetamodelo.md).
-- **Z** — iteración del generador de código sobre el metamodelo actual. Incrementa con cada nuevo módulo generado o mejora significativa del generador. El historial está en [`docs/evolucionGenerador.md`](./docs/evolucionGenerador.md).
-
-### Ejemplos
-
-| Tag | Significado |
-|---|---|
-| `v0.4.0` | Metamodelo v4 estable, generador vacío |
-| `v0.4.1` | MVP del generador de código |
-| `v0.5.0` | Nueva iteración del metamodelo (bifurcaciones) |
-
----
-## Estructura del proyecto
-
-Para una descripción detallada de la estructura del proyecto y la configuración del entorno de desarrollo, consulta [`docs/estructura.md`](./docs/estructura.md).
+DSL para definir sistemas multi-agente con IA y generar automáticamente el código Python listo para ejecutar con [LangGraph](https://www.langchain.com/langgraph). Escribe un modelo `.mad`, pulsa un botón y obtienes un proyecto Python completo con persistencia, herramientas y despliegue Docker.
 
 ---
 
-## Estructura de la documentación
+## ¿Qué hace?
 
-La carpeta `docs/` contiene toda la documentación de diseño y desarrollo del proyecto, organizada de la siguiente forma:
+Defines tu sistema en un fichero `.mad`:
 
 ```
-docs/
-├── estructura.md              ← Este archivo
-├── evolucionMetamodelo.md
-├── evolucionGenerador.md
-├── restricciones.md
-├── backlog.md
-├── metamodelo.md
-├── adr/
-│   ├── 001-compilacionUnificada.md
-│   ├── 002-summarize&mixReducer.md
-│   ├── 003-scopeProviderAttributes.md
-│   ├── 004-generadorEdges.md
-│   ├── 005-modelosPorProvider.md
-│   ├── 006-eliminacionEndPointTool.md
-│   ├── 007-toolNameEnMcpTool.md
-│   ├── 008-failFastMcpToolLookup.md
-│   ├── 009-baseModelComoToolYWhileLoop.md
-│   ├── 010-estadoPorSubgrafo.md
-│   └── 011-summarize&mixUpdate.md
-└── prototipos/
-    ├── cvReviewer/
-    │   ├── cvReviewer.mad
-    │   ├── cvReviewer.md
-    │   └── code/
-    └── research-assistant/
-        ├── research-assistant.mad
-        ├── research-assistant.md
-        └── code/
+{
+    context miSistema {
+        attribute resultado type string description "Respuesta final"
+        persistence Postgre
+    }
+
+    profile investigador description "Eres un investigador experto..."
+    profile redactor description "Eres un redactor conciso..."
+
+    mcpServer Tavily {
+        url "https://mcp.tavily.com/mcp/?tavilyApiKey={key}"
+        transport "streamable_http"
+        apiKeyName "TAVILY_API_KEY"
+        tools "tavily_search"
+    }
+
+    agent Researcher { provider anthropic  model "claude-sonnet-4-6"  profile investigador  tools Tavily }
+    agent Writer     { provider openai     model "gpt-4o"             profile redactor      stateContext resultado }
+
+    layered Pipeline {
+        layer Researcher next Writer
+        layer Writer
+    }
+
+    from START to Pipeline
+    from Pipeline to END
+}
 ```
 
-### `evolucionMetamodelo.md`
-
-Registro completo del proceso iterativo de diseño del metamodelo del DSL, desde la v1 (basada en Barriga et al.) hasta la v4 actual. Documenta para cada versión los cambios introducidos, las limitaciones detectadas y las decisiones tomadas. Sirve como trazabilidad del diseño y como material de apoyo para la memoria del TFG.
-
-### `evolucionGenerador.md`
-
-Registro del desarrollo incremental del generador de código. Documenta el estado de cada módulo generado (`prompt.py`, `config.py`, `state.py`, `agents.py`, `graph.py`), las decisiones y limitaciones de cada iteración, los cambios que el generador motivó en el metamodelo, y las instrucciones para ejecutar el código generado.
-
-### `restricciones.md`
-
-Catálogo de restricciones de bien-formedness (análogas a restricciones OCL) identificadas durante el desarrollo. Distingue entre restricciones ya implementadas en el validator de Langium y restricciones planificadas pendientes de implementación.
-
-### `backlog.md`
-
-Lista priorizada de tareas pendientes del proyecto, clasificadas por prioridad (alta, media, baja). Incluye desde funcionalidades bloqueantes como los mecanismos de bifurcación y el soporte de herramientas en agentes, hasta mejoras de calidad como flags en el CLI o la invocación del grafo con integración de LangSmith.
-
-### `metamodelo.md`
-Esquema del metamodelo y explicación de qué es cada clase.
-
-### `adr/` — Architecture Decision Records
-
-Registros de decisiones arquitectónicas relevantes tomadas durante el desarrollo. Cada ADR sigue la estructura contexto–decisión–consecuencias:
-
-- **`001-compilacionUnificada.md`** — Justifica la unificación de `langium:generate` y `tsc` en un único comando `npm run build`, y la decisión de no aplicar `npm audit fix --force` para las vulnerabilidades de `lodash`.
-- **`002-summarize&mixReducer.md`** *(deprecado, sustituido por ADR 011)* — Explica por qué el nodo de resumen de mensajes se genera pero no se conecta al grafo: el mecanismo solo tiene sentido en grafos cíclicos, y la posición es ambigua en grafos con múltiples estructuras de comunicación.
-- **`003-scopeProviderAttributes.md`** — Documenta la creación de un `ScopeProvider` personalizado en Langium para que las referencias `stateContext` y `stateUpdate` de los agentes puedan resolver los `Attribute` definidos dentro de `Environment`.
-- **`004-generadorEdges.md`** — Justifica la separación del generador de edges en un subdirectorio `generators/edges/` con un módulo por estructura de comunicación, anticipando el crecimiento por bifurcaciones y HumanInTheLoop.
-- **`005-modelosPorProvider.md`** — Justifica la separación del par `provider`/`model` en la gramática y la externalización del catálogo de modelos a `models.json`, validado en runtime, para evitar que la lista quede desfasada al ritmo de los proveedores.
-- **`006-eliminacionEndPointTool.md`** — Explica por qué se elimina `EndPointTool` del metamodelo: HTTP es demasiado abierto para capturarse declarativamente sin reproducir el protocolo entero en Langium, y el caso de uso queda cubierto por `PythonTool` y `MCPTool`.
-- **`007-toolNameEnMcpTool.md`** — Documenta la introducción del campo `tools` en `MCPServer` para seleccionar tools concretas de un servidor MCP, evitando bindear catálogos enteros que disparan coste por tokens y degradan la precisión de function-calling.
-- **`008-failFastMcpToolLookup.md`** — Justifica que `mcpClients.py` resuelva las tools al importarse y aborte con un mensaje accionable (qué tool falta y cuáles sí están disponibles) en lugar de propagar un `StopIteration` opaco en tiempo de ejecución.
-- **`009-baseModelComoToolYWhileLoop.md`** — Documenta el patrón de exponer el `BaseModel` de salida estructurada como una tool más y unificar el bucle modelo↔tools en un único while-loop dentro del nodo, sorteando la incompatibilidad entre `bind_tools` y `with_structured_output`.
-- **`010-estadoPorSubgrafo.md`** — Justifica generar un único `state.py` compartido por todos los subgrafos en lugar de un `TypedDict` por estructura de comunicación: el aislamiento ya lo aporta el modelo y la complejidad de proyectar campos entre subgrafos no se compensa en código generado.
-- **`011-summarize&mixUpdate.md`** — Sustituye al ADR 002. Coloca el nodo de resumen al final del grafo mediante un *conditional edge* basado en conteo de tokens (`tiktoken`), corrigiendo el problema que aparecía en sistemas con checkpointer al resumir antes de que existiera el contenido del turno.
-
-### `prototipos/` — Prototipos de validación del metamodelo
-
-Contiene los dos sistemas multiagente implementados manualmente para validar la expresividad del metamodelo antes de desarrollar el generador. Cada prototipo incluye el modelo `.mad`, el código Python implementado a mano y un informe de evaluación con las limitaciones detectadas:
-
-- **`research-assistant/`** — Asistente de investigación con cuatro agentes (organizador, investigador, redactor, validador) conectados mediante una estructura *centralized*, con herramientas MCP externas. Su informe (`research-assistant.md`) identificó limitaciones en flujo de control, gestión de herramientas, composición de estructuras y personalización de agentes.
-- **`cvReviewer/`** — Pipeline de evaluación de candidatos con cuatro agentes (extractor, evaluador, generador de informes, notificador) conectados mediante una estructura *layered*, con una herramienta Python local. Su informe (`cvReviewer.md`) reforzó la necesidad de mecanismos de interacción explícita entre agentes y estado compartido mediante *structured outputs*.
+Y la extensión genera el proyecto Python completo: grafo LangGraph, agentes, estado con checkpointer PostgreSQL, cliente MCP, requirements, `.env.template` y `langgraph.json` para `langgraph dev`.
 
 ---
 
-## Restricciones (validator)
+## Instalación
 
-Las restricciones de bien-formedness que no pueden expresarse en la gramática se implementan en [`multi-agent-dsl-validator.ts`](./packages/language/src/multi-agent-dsl-validator.ts). Actualmente el validator es el generado por defecto de Langium; las restricciones específicas del DSL están **pendientes de implementar**.
- 
----
+### Opción A — Extensión VSCode (recomendado)
 
-## Instalación y uso
+Instala **multiAgentDSL** desde el [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=pmorenoc.vscode-multiagentdsl). La extensión incluye el generador, el validador en tiempo real, autocompletado, hover y el diagrama del grafo. No requiere clonar el repositorio.
+
+### Opción B — Desde el código fuente
 
 ```bash
+git clone https://github.com/Pmoreno447/MAS-DSL
+cd MAS-DSL
 npm install
 npm run build
 ```
 
-Para usar la extensión VSCode, abrir el proyecto y ejecutar la tarea de lanzamiento desde `packages/extension/`.
+Luego abre la carpeta en VSCode y pulsa `F5` para lanzar la extensión en modo desarrollo.
 
 ---
 
-## Tecnologías
+## Stack técnico
 
-- [Langium](https://langium.org/) — framework para DSLs en TypeScript
-- Node.js / TypeScript
-- VSCode Language Server Protocol
+| Capa | Tecnología |
+|---|---|
+| DSL / Language Server | [Langium](https://langium.org/) + TypeScript |
+| Extensión VSCode | VSCode Extension API + esbuild |
+| Generador de código | TypeScript → Python / LangGraph |
+| Pruebas | [Vitest](https://vitest.dev/) — unitarias, restricciones y snapshots |
+| Ejecución del código generado | Python 3.12 + LangGraph CLI |
+
+---
+
+## Documentación
+
+| Fichero | Contenido |
+|---|---|
+| [packages/extension/help.md](packages/extension/help.md) | **Referencia del lenguaje**: sintaxis completa, modelos disponibles por proveedor, snippets, autocompletado y cómo ejecutar el código generado |
+| [examples/](examples/) | **Modelos de ejemplo** organizados en tres niveles (ver tabla debajo) |
+| [docs/metamodelo.md](docs/metamodelo.md) | Esquema del metamodelo y descripción de cada clase |
+| [docs/restricciones.md](docs/restricciones.md) | Catálogo de restricciones de bien-formedness R01–R15 |
+| [docs/evolucionMetamodelo.md](docs/evolucionMetamodelo.md) | Historial de las 5 iteraciones del metamodelo |
+| [docs/evolucionGenerador.md](docs/evolucionGenerador.md) | Desarrollo incremental del generador por módulo |
+| [docs/evoluciónExtensión.md](docs/evoluciónExtensión.md) | Funcionalidades de la extensión y decisiones de diseño |
+| [docs/faseTesting.md](docs/faseTesting.md) | Estrategia de pruebas: pairwise, snapshots y tests dinámicos |
+| [docs/backlog.md](docs/backlog.md) | Tareas completadas y trabajos futuros priorizados |
+| [docs/adr/](docs/adr/) | 11 Architecture Decision Records (contexto–decisión–consecuencias) |
+| [docs/estructura.md](docs/estructura.md) | Estructura del proyecto y guía de desarrollo |
+
+### Ejemplos
+
+| Carpeta | Descripción |
+|---|---|
+| [examples/01-prototipado/](examples/01-prototipado/) | Modelos de la fase de diseño del metamodelo, escritos para validar la expresividad del lenguaje antes de desarrollar el generador |
+| [examples/02-validacionGenerador/](examples/02-validacionGenerador/) | 8 modelos usados para validar el generador por proveedor y funcionalidad (Google, OpenAI, Anthropic, Ollama, summarize, trim, mix, decentralized) |
+| [examples/03-casosDeUso/](examples/03-casosDeUso/) | 3 casos de uso reales: **customerService** (atención al cliente con centralized + layered), **legalAdvisor** (asesor legal con MCP + Postgre + summarizer), **incidentResponder** (respuesta a incidencias SRE con diagnóstico en paralelo + MongoDB) |

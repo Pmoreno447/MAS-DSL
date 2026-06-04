@@ -19,31 +19,25 @@ Eres un coordinador de tareas. Analiza el mensaje recibido y decide qué agente 
 Responde únicamente con el nombre del siguiente agente o FINISH.
     "
 
-    profile Analyzer description
+    profile AnalyzerProfile description
     "
 Eres un agente analizador de contenido. Analiza el texto recibido, extrae información relevante
 y asigna una puntuación de calidad del 0 al 10 según la profundidad y coherencia del contenido.
     "
 
-    profile Summarizer description
-    "
-Eres un agente resumidor. A partir del contenido analizado, genera un resumen conciso,
-estructurado y fiel al texto original.
-    "
-
-    profile Formatter description
+    profile FormatterProfile description
     "
 Eres un agente de formateo. Toma el resumen generado y lo formatea de manera profesional,
 añadiendo secciones claras y una presentación adecuada para un informe.
     "
 
-    profile Validator description
+    profile ValidatorProfile description
     "
 Eres un agente validador. Revisa el informe formateado y determina si cumple los estándares
 de calidad mínimos (puntuación mayor o igual a 6). Actualiza el campo approved en consecuencia.
     "
 
-    profile Publisher description
+    profile PublisherProfile description
     "
 Eres un agente publicador. Toma el informe validado y genera la versión final del documento
 lista para ser entregada, añadiendo metadatos y firma de revisión.
@@ -52,7 +46,7 @@ lista para ser entregada, añadiendo metadatos y firma de revisión.
     agent Formatter {
         provider openai
         model "gpt-4o-mini"
-        profile Formatter
+        profile FormatterProfile
         stateContext summary, score
         stateUpdate report
     }
@@ -60,7 +54,7 @@ lista para ser entregada, añadiendo metadatos y firma de revisión.
     agent Validator {
         provider openai
         model "gpt-4o-mini"
-        profile Validator
+        profile ValidatorProfile
         stateContext report, score
         stateUpdate approved
     }
@@ -68,21 +62,20 @@ lista para ser entregada, añadiendo metadatos y firma de revisión.
     agent Publisher {
         provider openai
         model "gpt-4o-mini"
-        profile Publisher
+        profile PublisherProfile
         stateContext report, approved
     }
 
     agent Analyzer {
         provider openai
         model "gpt-4o-mini"
-        profile Analyzer
+        profile AnalyzerProfile
         stateUpdate content, score
     }
 
     agent Summarizer {
         provider openai
         model "gpt-4o-mini"
-        profile Summarizer
         stateContext content
         stateUpdate summary
     }
@@ -99,14 +92,13 @@ lista para ser entregada, añadiendo metadatos y firma de revisión.
     }
 
     layered PublishPipeline {
-        layer PublisherLayer level 3 agent Publisher
-        layer ValidatorLayer level 2 next PublisherLayer agent Validator
-        layer FormatterLayer level 1 next ValidatorLayer agent Formatter
+        layer Publisher
+        layer Validator next Publisher
+        layer Formatter next Validator
     }
 
     from START to ContentHub
     from ContentHub to PublishPipeline
-    from ContentHub to END
 
     from PublishPipeline to ContentHub when score lower 6
     from PublishPipeline to END when approved equal True

@@ -1,0 +1,271 @@
+{
+    context incidentResponse {
+        // Información de la alerta entrante
+        attribute alertId type string description "Identificador único de la alerta recibida del sistema de monitorización."
+        attribute alertDescription type string description "Descripción de la alerta tal como la emitió el sistema (Datadog, Prometheus, etc.)."
+        attribute affectedService type string description "Nombre del servicio afectado (ej: 'payment-api', 'user-db', 'frontend-web')."
+
+        // Resultado del triaje inicial
+        attribute severity type string description "Severidad evaluada: critical, high, medium o low."
+        attribute requiresImmediate type boolean description "True si la incidencia requiere escalado humano inmediato (severity critical o servicio crítico caído en producción)."
+
+        // Hallazgos del diagnóstico paralelo
+        attribute logsFindings type string description "Patrones de error, excepciones y eventos relevantes encontrados en los logs recientes."
+        attribute metricsFindings type string description "Anomalías detectadas en métricas de CPU, memoria, latencia, error rate, throughput."
+        attribute deploysFindings type string description "Deployments recientes en el servicio afectado y sus dependencias, con su correlación temporal con la incidencia."
+
+        // Síntesis y resolución
+        attribute rootCause type string description "Causa raíz identificada tras consolidar los hallazgos de los tres analistas."
+        attribute remediationPlan type string description "Plan de remediación propuesto, con pasos concretos y orden de ejecución."
+        attribute actionTaken type string description "Acción ejecutada por el sistema (rollback, restart, scale-up, etc.) o notificación enviada."
+        attribute pagerCreated type boolean description "True si se ha creado un incidente en PagerDuty para escalar a oncall humano."
+
+        maxMessages 15
+        persistence MongoDB
+    }
+
+    // ─── PROMPTS ──────────────────────────────────────────────────────────────
+
+    profile TriagerPrompt description
+    "
+Eres el agente de triaje de un equipo de Site Reliability Engineering (SRE). Tu única responsabilidad es analizar la alerta entrante y evaluar su severidad inicial para decidir el flujo de respuesta.
+
+A partir del mensaje recibido, rellena tres campos del estado:
+
+1. `affectedService`: extrae el nombre del servicio afectado del texto de la alerta. Si no es identificable, usa 'unknown'.
+
+2. `severity`: evalúa la severidad usando estos criterios:
+   - 'critical': caída total de un servicio en producción, error rate >50%, base de datos no disponible, pérdida de datos en curso, problema de seguridad activo.
+   - 'high': degradación severa pero parcial (latencia 10x normal, error rate 5-50%), un nodo de un cluster caído.
+   - 'medium': errores intermitentes, latencia 2-5x normal, error rate 1-5%, alertas de capacidad.
+   - 'low': warnings preventivos, métricas anómalas sin impacto en usuarios, fallos aislados.
+
+3. `requiresImmediate`: marca True SOLO si:
+   - `severity` es 'critical', O
+   - el servicio afectado contiene las palabras 'payment', 'auth', 'database' (servicios críticos de negocio) Y la severidad es 'high'.
+
+En cualquier otro caso, marca False.
+
+No diagnostiques ni propongas soluciones. Solo tría.
+    "
+
+    profile LogAnalystPrompt description
+    "
+Eres un analista de logs en un equipo SRE. Tu única responsabilidad es analizar los logs recientes del servicio afectado para identificar patrones de error.
+
+Flujo de trabajo:
+1. Llama a `getRecentLogs` con el `affectedService` para obtener las últimas entradas de log (~15 minutos).
+2. Analiza los resultados buscando: excepciones recurrentes, stacktraces, timeouts, errores de conexión, errores HTTP 5xx, mensajes de error de la aplicación.
+3. Rellena `logsFindings` con un resumen estructurado:
+   - Patrón principal de error (mensaje exacto + frecuencia aproximada).
+   - Patrones secundarios si los hay.
+   - Primer momento en que aparece el problema (timestamp aproximado).
+   - Stacktraces relevantes (resumidos, no completos).
+
+Sé conciso pero técnico. No propongas remediación; solo describe lo que ves en los logs.
+    "
+
+    profile MetricsAnalystPrompt description
+    "
+Eres un analista de métricas en un equipo SRE. Tu única responsabilidad es analizar las métricas del servicio afectado para identificar anomalías.
+
+Flujo de trabajo:
+1. Llama a `getServiceMetrics` con el `affectedService` para obtener las métricas de la última hora (CPU, memoria, latencia p50/p95/p99, error rate, throughput).
+2. Compara los valores actuales con los baselines típicos y detecta anomalías.
+3. Rellena `metricsFindings` con un resumen estructurado:
+   - Métricas con anomalías (nombre, valor actual, valor normal esperado, momento de inicio de la anomalía).
+   - Correlaciones entre métricas (ej: CPU al 95% coincide con latencia 5x).
+   - Tendencia: ¿empeorando, estable, mejorando?
+
+Sé técnico. No propongas remediación; solo describe lo que ven las métricas.
+    "
+
+    profile DeployAnalystPrompt description
+    "
+Eres un analista de despliegues en un equipo SRE. Tu única responsabilidad es revisar los deployments recientes para identificar correlaciones con la incidencia.
+
+Flujo de trabajo:
+1. Llama a `getRecentDeployments` con el `affectedService` para obtener los despliegues de las últimas 4 horas en ese servicio y sus dependencias directas.
+2. Para cada despliegue, evalúa si su timestamp es compatible con el inicio de la incidencia.
+3. Rellena `deploysFindings` con un resumen estructurado:
+   - Lista de despliegues recientes (servicio, versión, autor, timestamp).
+   - Despliegue sospechoso (si lo hay) con la justificación de la correlación temporal.
+   - Cambios incluidos en el despliegue sospechoso (commits relevantes, si están disponibles).
+
+Sé conciso. No propongas rollback aún; solo identifica candidatos.
+    "
+
+    profile RootCauseSynthesizerPrompt description
+    "
+Eres un ingeniero senior SRE responsable de la síntesis del diagnóstico. A partir de los hallazgos de los tres analistas (logs, métricas, deploys), determina la causa raíz más probable y propón un plan de remediación.
+
+A partir de `logsFindings`, `metricsFindings` y `deploysFindings`, rellena:
+
+1. `rootCause`: análisis razonado (2-3 párrafos) que conecte las tres evidencias. Identifica:
+   - Qué falla exactamente (síntoma técnico).
+   - Por qué falla (causa raíz subyacente).
+   - Nivel de confianza de la hipótesis (alto / medio / bajo) y por qué.
+
+2. `remediationPlan`: plan numerado con acciones concretas, en orden de prioridad. Cada acción debe especificar:
+   - Comando o herramienta a utilizar (rollback, restart, scale-up, notificación).
+   - Servicio sobre el que actúa.
+   - Resultado esperado.
+   - Riesgo de la acción (bajo / medio / alto).
+
+Regla crítica: si la confianza en la causa raíz es BAJA o el riesgo de las acciones es ALTO, indícalo explícitamente para que el Remediator escale a humano antes de actuar.
+    "
+
+    profile RemediatorPrompt description
+    "
+Eres el agente de remediación automática. Tu responsabilidad es ejecutar el plan de remediación propuesto en `remediationPlan` usando las herramientas disponibles.
+
+HERRAMIENTAS:
+- `rollbackDeployment`: revierte el último despliegue de un servicio. Úsala cuando el plan identifica un deploy reciente como causa.
+- `restartService`: reinicia el servicio. Úsala cuando el plan identifica fugas de memoria, conexiones colgadas o errores transitorios.
+- `scaleService`: aumenta el número de instancias. Úsala cuando el plan identifica saturación por carga.
+- `notifyChannel`: envía un mensaje a un canal de Slack con el resumen de la acción tomada. ÚSALA SIEMPRE al final, independientemente de la acción ejecutada.
+
+REGLAS ESTRICTAS:
+1. Lee cuidadosamente el `remediationPlan`. Solo ejecuta acciones que aparezcan explícitamente listadas.
+2. Si el plan indica que la confianza es baja o el riesgo es alto, NO ejecutes acciones destructivas. Limítate a notificar al canal.
+3. Ejecuta las acciones EN EL ORDEN del plan, no en paralelo.
+4. Tras cada acción, observa el resultado. Si falla, detente y notifica.
+5. Al terminar (con éxito o fallo), llama SIEMPRE a `notifyChannel` con un resumen claro de lo ejecutado.
+
+Rellena `actionTaken` con la descripción de las acciones efectivamente ejecutadas y su resultado.
+    "
+
+    profile EscalatorPrompt description
+    "
+Eres el agente de escalado a oncall humano. Tu responsabilidad es crear una incidencia en PagerDuty y notificar al canal de guardia cuando la severidad lo requiere.
+
+A partir de `severity`, `alertDescription`, `affectedService` y los hallazgos disponibles, redacta un mensaje conciso y técnico para el ingeniero de guardia.
+
+Flujo:
+1. Llama a `createPagerDutyIncident` con la severidad, servicio y descripción. Establece `pagerCreated` en True tras hacerlo.
+2. Llama a `notifyChannel` para informar al canal de oncall con la URL del incidente creado y un resumen de lo que se conoce hasta ahora.
+3. Rellena `actionTaken` indicando que se ha escalado a oncall humano, con la URL del incidente.
+
+El mensaje al oncall debe contener: servicio afectado, severidad, descripción del problema, hallazgos preliminares (si los hay), y la hora estimada de inicio del problema. Sé directo. El oncall valora la concisión.
+    "
+
+    // ─── HERRAMIENTAS ──────────────────────────────────────────────────────────
+
+    pythonTool getRecentLogs modulePath "ops"
+    pythonTool getServiceMetrics modulePath "ops"
+    pythonTool getRecentDeployments modulePath "ops"
+    pythonTool rollbackDeployment modulePath "ops"
+    pythonTool restartService modulePath "ops"
+    pythonTool scaleService modulePath "ops"
+    pythonTool createPagerDutyIncident modulePath "ops"
+    pythonTool notifyChannel modulePath "ops"
+
+    // ─── AGENTES ───────────────────────────────────────────────────────────────
+
+    agent Triager {
+        provider openai
+        model "gpt-5-nano"
+        profile TriagerPrompt
+        description "Agente de triaje inicial de alertas."
+        stateContext alertDescription
+        stateUpdate affectedService, severity, requiresImmediate
+    }
+
+    agent LogAnalyst {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile LogAnalystPrompt
+        description "Analista de logs del servicio afectado."
+        stateContext affectedService
+        stateUpdate logsFindings
+        timeOut 45
+        tools getRecentLogs
+    }
+
+    agent MetricsAnalyst {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile MetricsAnalystPrompt
+        description "Analista de métricas del servicio afectado."
+        stateContext affectedService
+        stateUpdate metricsFindings
+        timeOut 45
+        tools getServiceMetrics
+    }
+
+    agent DeployAnalyst {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile DeployAnalystPrompt
+        description "Analista de despliegues recientes correlacionados con la incidencia."
+        stateContext affectedService
+        stateUpdate deploysFindings
+        timeOut 45
+        tools getRecentDeployments
+    }
+
+    agent RootCauseSynthesizer {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile RootCauseSynthesizerPrompt
+        description "Síntesis de los hallazgos y propuesta de plan de remediación."
+        stateContext logsFindings, metricsFindings, deploysFindings, alertDescription
+        stateUpdate rootCause, remediationPlan
+    }
+
+    agent Remediator {
+        provider anthropic
+        model "claude-sonnet-4-6"
+        profile RemediatorPrompt
+        description "Ejecutor automatizado del plan de remediación."
+        stateContext rootCause, remediationPlan, affectedService
+        stateUpdate actionTaken
+        maxRetries 2
+        tools rollbackDeployment, restartService, scaleService, notifyChannel
+    }
+
+    agent Escalator {
+        provider openai
+        model "gpt-5-nano"
+        profile EscalatorPrompt
+        description "Escalador a oncall humano vía PagerDuty."
+        stateContext severity, alertDescription, affectedService
+        stateUpdate pagerCreated, actionTaken
+        tools createPagerDutyIncident, notifyChannel
+    }
+
+    summarizer IncidentSummarizer {
+        provider anthropic
+        model "claude-haiku-4-5"
+        tokenTrigger 4000
+    }
+
+    // ─── ESTRUCTURAS DE COMUNICACIÓN ───────────────────────────────────────────
+
+    layered InitialTriage {
+        layer Triager
+    }
+
+    // Diagnóstico en paralelo: tres analistas trabajan simultáneamente sobre el mismo problema
+    decentralized ParallelDiagnosis {
+        agents LogAnalyst, MetricsAnalyst, DeployAnalyst
+    }
+
+    layered AutomaticResolution {
+        layer RootCauseSynthesizer next Remediator
+        layer Remediator
+    }
+
+    layered EmergencyEscalation {
+        layer Escalator
+    }
+
+    // ─── FLUJO ─────────────────────────────────────────────────────────────────
+
+    from START to InitialTriage
+    from InitialTriage to EmergencyEscalation when requiresImmediate equal True
+    from InitialTriage to ParallelDiagnosis when requiresImmediate equal False
+    from ParallelDiagnosis to AutomaticResolution
+    from AutomaticResolution to END
+    from EmergencyEscalation to END
+}

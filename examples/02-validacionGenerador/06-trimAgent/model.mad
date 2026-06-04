@@ -18,7 +18,7 @@ Asistente conversacional amigable
     }
 
     layered Grafo {
-        layer chat level 1 agent chatBot
+        layer chatBot
     }
 
     from START to Grafo

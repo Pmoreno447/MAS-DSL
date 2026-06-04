@@ -8,10 +8,6 @@
 Asistente conversacional amigable
     "
 
-    profile resumen description
-    "
-    "
-
     agent chatBot {
         provider openai
         model "gpt-4o"
@@ -23,12 +19,11 @@ Asistente conversacional amigable
     summarizer Test {
         provider openai
         model "gpt-4o"
-        profile resumen
         tokenTrigger 150
     }
 
     layered Grafo {
-        layer chat level 1 agent chatBot
+        layer chatBot
     }
 
     from START to Grafo

@@ -1,138 +1,111 @@
-## Metamodelo
-* **Última Actualización:** 23/04/2026
+# Metamodelo
 
-![Metamodelo](./media/Metamodel.webp)
-
-## Conceptos del metamodelo
-
-Un sistema multiagente se describe mediante la siguiente estructura raíz (`LLMMultiAgentSystem`):
-
-```
-{
-  environment ...
-  profile ...
-  tool ...
-  agent ...
-  <estructuras de comunicación> ...
-  <transiciones entre estructuras> ...
-}
-```
-
-El metamodelo se organiza en seis bloques principales: **Environment**, **Profile**, **Tool**, **Agent**, **CommunicationStructure** y **CommTransition**.
+![Metamodelo](./media/metamodelo_final.webp)
 
 ---
 
-### `Environment`
+## Entidades
 
-Representa el entorno en el que opera el sistema multiagente. Contiene tres sub-conceptos:
+### `LLMMultiAgentSystem`
 
-#### `GameRule`
+Entidad raíz del modelo. Actúa como contenedor del sistema y agrega los seis tipos de elementos que lo componen: `Context`, `Profile`, `Tool`, `Actor`, `CommunicationStructure` y `Transition`.
 
-Reglas generales del sistema expresadas como descripciones textuales. _Pendiente de desarrollo._
+---
 
-#### `Attribute`
+### `Context` y `Attribute`
 
-Campos tipados (`int`, `string`, `boolean`) que conforman el estado compartido del sistema. Cada atributo tiene un nombre, un tipo y una descripción obligatoria. Los agentes pueden referenciar estos atributos para leer valores del estado o para actualizar el estado compartido a través de esquemas de salida estructurada.
+`Context` declara el estado compartido del sistema: el único canal de información que los agentes tienen para leer y escribir entre sí. Está compuesto por cero o más `Attribute`, cada uno con un nombre (`name`), un tipo primitivo (`type`: `int`, `string` o `boolean`) y una descripción obligatoria (`description`) que el generador utiliza como metadato en los esquemas Pydantic generados.
 
-Opcionalmente, un atributo puede declarar un bloque `literal` con al menos un valor válido. Esto restringe el dominio del atributo a un conjunto cerrado de constantes, y sirve de base para la validación de condiciones de transición y para la generación de tipos enumerados en el código producido.
+`Context` incluye dos atributos opcionales de gestión del historial:
 
-#### `Message`
-
-Determina la estrategia de gestión del historial de mensajes de los agentes. Existen cuatro opciones:
-
-| Estrategia   | Descripcion                                                                 |
-|--------------|-----------------------------------------------------------------------------|
-| `trim`       | Recorta el historial conservando solo los últimos N mensajes (`maxMessages`). |
-| `summarize`  | Resume el historial cuando supera un umbral de tokens (`maxToken`).          |
-| `mix`        | Combina ambas estrategias: limita por tokens (`maxToken`) y por número de mensajes (`maxMessages`). |
-| `none`       | No aplica ninguna gestión; se conserva el historial completo.                |
+| Atributo | Descripción |
+|---|---|
+| `maxMessages` | Activa el truncado del historial conservando solo los últimos N mensajes |
+| `persistence` | Mecanismo de persistencia del estado: `inMemorySave`, `postgresSave` o `mongoSave` |
 
 ---
 
 ### `Profile`
 
-Un perfil define el prompt de sistema que recibe un agente. Tiene un nombre identificador y una descripción textual (`profileDescription`) que constituye el prompt en sí. Varios agentes pueden compartir el mismo perfil, lo que permite reutilizar un mismo prompt en distintos nodos del sistema.
+Define el prompt de sistema de un actor. Es un elemento de primer nivel reutilizable: varios actores pueden referenciar el mismo perfil sin duplicar su definición. Contiene un identificador (`name`) y el texto del prompt (`profileDescription`), declarado como cadena multilínea.
 
 ---
 
-### `Agent`
+### `Actor`, `Agent`, `Coordinator` y `Summarizer`
 
-Define un agente individual dentro del sistema. Referencia un `Profile` (su prompt) y declara el modelo LLM que utilizará. Sus atributos se dividen en tres categorías:
+`Actor` es la abstracción base de todos los participantes del grafo. Agrupa los atributos comunes:
 
-**Obligatorios:**
+| Atributo | Descripción |
+|---|---|
+| `name` | Identificador del actor |
+| `provider` | Proveedor LLM: `openai`, `anthropic`, `ollama` o `google_genai` |
+| `model` | Identificador del modelo concreto, validado contra una lista curada por proveedor |
+| `profile` | Referencia opcional a un `Profile` |
+| `temperature` | Aleatoriedad de la generación (0.0–1.0) |
 
-| Atributo   | Descripcion                                                         |
-|------------|---------------------------------------------------------------------|
-| `provider`    | Proovedor del modelo seleccionado. Lista limitada            |
-| `model`    | Modelo LLM a utilizar: `gpt`, `claude`, `ollama`, ... Es un string que es validado a través de una lista en .json                 |
-| `profile`  | Referencia al `Profile` que define el prompt de sistema del agente.  |
+El proveedor se modela como enumeración estática porque condiciona directamente los imports y las variables de entorno del proyecto generado.
 
-**Recomendables:**
+De `Actor` derivan tres subtipos:
 
-| Atributo       | Descripcion                                                                                                     |
-|----------------|-----------------------------------------------------------------------------------------------------------------|
-| `description`  | Descripción textual del propósito del agente dentro del sistema. Sirve como comentario en el código generado.                                                |
-| `stateContext` | Referencias a `Attribute`s del entorno cuyos valores se inyectan en el contexto del agente (lectura del estado). |
-| `stateUpdate`  | Referencias a `Attribute`s del entorno que el agente puede modificar mediante salida estructurada (escritura del estado). |
+#### `Agent`
 
-**Opcionales:**
+Nodo genérico del grafo. Incorpora atributos de configuración adicionales (`maxToken`, `timeOut`, `maxRetries`, `statusMessage`) y referencias al estado:
 
-| Atributo      | Descripcion                                                        |
-|---------------|--------------------------------------------------------------------|
-| `temperature` | Controla la aleatoriedad de las respuestas del modelo.              |
-| `maxToken`    | Límite máximo de tokens en la respuesta generada.                   |
-| `timeOut`     | Tiempo máximo de espera (en segundos) para la respuesta del modelo. |
-| `maxRetries`  | Número máximo de reintentos ante fallos de la llamada al modelo.    |
-| `tools`       | Lista de herramientas (`Tool`) que el agente puede invocar.         |
+- `stateContext`: atributos que el agente lee — el generador los inyecta en su prompt en cada invocación.
+- `stateUpdate`: atributos que el agente escribe — el generador construye con ellos un esquema `BaseModel` de salida estructurada.
+
+También puede referenciar herramientas mediante `tools`.
+
+#### `Coordinator`
+
+Actor especializado que actúa como orquestador en una estructura `Centralized`. Solo decide a qué agente delegar en cada turno; no resuelve problemas por sí mismo ni tiene referencias al estado ni herramientas propias. Sus atributos son los mínimos heredados de `Actor`.
+
+#### `Summarizer`
+
+Actor especializado en comprimir el historial de mensajes. Cuando el historial supera el umbral definido por `tokenTrigger`, genera un resumen y lo almacena en el estado como campo independiente. No puede tener perfil asignado, dado que su comportamiento está completamente determinado por el generador.
 
 ---
 
-### `Tool`
+### `PythonTool` y `MCPServer`
 
-Define herramientas que los agentes pueden utilizar para interactuar con sistemas externos. Todas las herramientas comparten una base común (`ToolBase`): nombre y parámetros opcionales tipados (`Param`). Existen dos tipos:
+`Tool` es la abstracción base de las herramientas. De ella derivan dos subtipos:
 
-#### `PythonTool`
+**`PythonTool`** — referencia una función Python local del proyecto mediante su nombre y la ruta al módulo (`modulePath`); el generador produce el import correspondiente.
 
-Herramienta implementada como un módulo Python local. Además de la base común, requiere la ruta al módulo (`modulePath`).
-
-#### `MCPServer`
-
-Herramienta que conecta con un servidor MCP (Model Context Protocol) remoto. Define la URL del servidor (`serverUrl`), el tipo de transporte (`transport`), opcionalmente, una clave de autenticación (`key`) y una lista de nombres de tools tools (`tools`), de forma que si vamos a usar varias herramientas de un mismo server solo necesitemos una conexión con dicho server.
+**`MCPServer`** — declara la URL de un servidor MCP remoto, el protocolo de transporte (`transport`), una clave API opcional (`apiKeyName`) y la lista de nombres de herramientas concretas a exponer (`tools`); el generador produce un cliente `MultiServerMCPClient` con esta configuración.
 
 ---
 
 ### `CommunicationStructure`
 
-Define cómo se organizan y comunican los agentes dentro de un subgrafo. Cada estructura declara opcionalmente si es el punto de entrada del sistema (`start`) o el punto de salida (`end`). Las relaciones entre estructuras se definen de forma independiente mediante `CommTransition`. Existen cuatro estructuras:
+Abstracción base de las estructuras de comunicación. Los cuatro subtipos se inspiran en las topologías de comunicación identificadas en la literatura, en una interpretación simplificada:
 
 #### `Layered`
 
-Organización jerárquica en capas. Cada `Layer` tiene un nombre, un nivel numérico (`level`), una referencia al agente que opera en ella y una referencia opcional a la siguiente capa (`next`).
+Pipeline secuencial. Los agentes se ejecutan en el orden definido por las capas (`Layer`), cada una ocupada por exactamente un agente. La salida de una capa sirve de entrada a la siguiente, sin bifurcaciones.
 
 #### `Centralized`
 
-Un agente coordinador central (`coordinator`) gestiona la comunicación con el resto de agentes del subgrafo.
-
-#### `SharedMessagePool`
-
-Todos los agentes del subgrafo comparten un pool de mensajes común, sin jerarquía ni coordinador.
+Un `Coordinator` implementado como nodo LLM recibe el contexto acumulado del sistema y, en cada turno, decide de forma autónoma a qué agente especializado delegar la ejecución. No hay lógica de enrutamiento codificada: la decisión emerge del propio modelo.
 
 #### `Decentralized`
 
-Comunicación directa entre agentes sin coordinación central ni pool compartido.
+Cada agente está conectado al resto de agentes de la estructura. Tras ejecutarse, cada agente devuelve un `Command` de LangGraph indicando explícitamente el siguiente nodo, sin ningún coordinador central.
+
+#### `SharedMessagePool`
+
+Todos los agentes comparten un pool de mensajes común. Esta estructura está contemplada en el metamodelo pero pendiente de implementación en el generador.
 
 ---
 
-### `CommTransition`
+### `Transition` y `Condition`
 
-Define una transición entre dos estructuras de comunicación. Se declara a nivel de sistema, fuera de las propias estructuras, lo que permite razonar sobre el grafo de comunicación de forma global.
+`Transition` define una arista entre dos `CommunicationStructure` a nivel de sistema, expresando el flujo de control del grafo. Contiene una referencia de origen (`from`, que puede ser `START`) y una de destino (`to`, que puede ser `END`). Opcionalmente puede incluir una `Condition` formada por:
 
-| Atributo    | Descripción                                                                                      |
-|-------------|--------------------------------------------------------------------------------------------------|
-| `from`      | Estructura de comunicación origen.                                                               |
-| `to`        | Estructura de comunicación destino.                                                              |
-| `condition` | Condición opcional. Si se especifica, la transición solo se activa cuando el atributo referenciado es igual al valor indicado. |
+| Campo | Descripción |
+|---|---|
+| `attribute` | Referencia a un `Attribute` del estado |
+| `operator` | Operador de comparación: `equal`, `greater` o `lower` |
+| `value` | Valor literal (`int`, `string` o `boolean`) |
 
-#### `Condition`
-
-Una condición compara un `Attribute` del entorno con un valor literal mediante igualdad (`==`). Permite modelar bifurcaciones en las que el sistema navega a una estructura u otra en función del estado en tiempo de ejecución.
+Cuando existe condición, todos sus campos son obligatorios; cuando no existe, la transición es incondicional.

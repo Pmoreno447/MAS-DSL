@@ -24,12 +24,11 @@ Asistente conversacional amigable
     summarizer test {
         provider openai
         model "gpt-4o"
-        profile resumen
         tokenTrigger 200
     }
 
     layered Grafo {
-        layer chat level 1 agent chatBot
+        layer chatBot
     }
 
     from START to Grafo

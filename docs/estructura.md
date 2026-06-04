@@ -10,7 +10,10 @@ multiAgentDSL/
 │   ├── language/     ← Gramática del DSL y lógica del generador
 │   ├── cli/          ← Interfaz de línea de comandos
 │   └── extension/    ← Extensión de VSCode
-├── examples/         ← Modelos de ejemplo en el DSL
+├── examples/
+│   ├── 01-prototipado/          ← Modelos de validación del metamodelo
+│   ├── 02-validacionGenerador/  ← Modelos para validar el generador por proveedor/feature
+│   └── 03-casosDeUso/           ← Casos de uso reales (customerService, legalAdvisor, incidentResponder)
 ├── docs/             ← Documentación y prototipos
 └── package.json      ← Configuración raíz del workspace
 ```
@@ -46,21 +49,31 @@ node packages/cli/bin/cli.js generate examples/miModelo.mad -d ./output
 
 ## Estructura de la documentación
 
-La carpeta `docs/` contiene toda la documentación de diseño y desarrollo del proyecto, organizada de la siguiente forma:
+La carpeta `docs/` contiene toda la documentación de diseño y desarrollo del proyecto:
 
 ```
 docs/
 ├── estructura.md              ← Este archivo
+├── metamodelo.md
+├── restricciones.md
 ├── evolucionMetamodelo.md
 ├── evolucionGenerador.md
-├── restricciones.md
+├── evoluciónExtensión.md
+├── faseTesting.md
 ├── backlog.md
-├── metamodelo.md
+├── comandosCheckpointDB.md
 ├── adr/
 │   ├── 001-compilacionUnificada.md
-│   ├── 002-summarize&mixReducer.md
+│   ├── 002-summarize&mixReducer.md   (deprecado, ver 011)
 │   ├── 003-scopeProviderAttributes.md
-│   └── 004-generadorEdges.md
+│   ├── 004-generadorEdges.md
+│   ├── 005-modelosPorProvider.md
+│   ├── 006-eliminacionEndPointTool.md
+│   ├── 007-toolNameEnMcpTool.md
+│   ├── 008-failFastMcpToolLookup.md
+│   ├── 009-baseModelComoToolYWhileLoop.md
+│   ├── 010-estadoPorSubgrafo.md
+│   └── 011-summarize&mixUpdate.md
 └── prototipos/
     ├── cvReviewer/
     │   ├── cvReviewer.mad
@@ -72,40 +85,60 @@ docs/
         └── code/
 ```
 
-### `evolucionMetamodelo.md`
+### `metamodelo.md`
 
-Registro completo del proceso iterativo de diseño del metamodelo del DSL, desde la v1 (basada en Barriga et al.) hasta la v4 actual. Documenta para cada versión los cambios introducidos, las limitaciones detectadas y las decisiones tomadas. Sirve como trazabilidad del diseño y como material de apoyo para la memoria del TFG.
-
-### `evolucionGenerador.md`
-
-Registro del desarrollo incremental del generador de código. Documenta el estado de cada módulo generado (`prompt.py`, `config.py`, `state.py`, `agents.py`, `graph.py`), las decisiones y limitaciones de cada iteración, los cambios que el generador motivó en el metamodelo, y las instrucciones para ejecutar el código generado.
+Esquema del metamodelo y descripción de cada clase y sus relaciones.
 
 ### `restricciones.md`
 
-Catálogo de restricciones de bien-formedness (análogas a restricciones OCL) identificadas durante el desarrollo. Distingue entre restricciones ya implementadas en el validator de Langium y restricciones planificadas pendientes de implementación.
+Catálogo de restricciones de bien-formedness (análogas a restricciones OCL) identificadas durante el desarrollo. Distingue entre restricciones implementadas en el validator de Langium (R01–R15) y restricciones pendientes.
+
+### `evolucionMetamodelo.md`
+
+Registro completo del proceso iterativo de diseño del metamodelo, desde la v1 (basada en Barriga et al.) hasta la v5 actual. Documenta para cada versión los cambios introducidos, las limitaciones detectadas y las decisiones tomadas.
+
+### `evolucionGenerador.md`
+
+Registro del desarrollo incremental del generador de código. Documenta el estado de cada módulo generado (`prompt.py`, `config.py`, `state.py`, `agents.py`, `graph.py`, `tools/`), las decisiones y limitaciones de cada iteración, y los cambios que el generador motivó en el metamodelo.
+
+### `evoluciónExtensión.md`
+
+Registro del desarrollo incremental de la extensión de VSCode. Documenta las funcionalidades añadidas (resaltado, autocompletado, hover, snippets, generación, diagrama, MCP, warnings), las decisiones de diseño y las alternativas descartadas (como el webview propio para el diagrama).
+
+### `faseTesting.md`
+
+Documentación de la fase de pruebas del proyecto: restricciones del validator (R01–R15), estrategia pairwise para el generador (17 fixtures de 144 combinaciones posibles), resultados de los tests dinámicos con LLMs reales y bugs encontrados, y tests de snapshot como regresión estática.
 
 ### `backlog.md`
 
-Lista priorizada de tareas pendientes del proyecto, clasificadas por prioridad (alta, media, baja). Incluye desde funcionalidades bloqueantes como los mecanismos de bifurcación y el soporte de herramientas en agentes, hasta mejoras de calidad como flags en el CLI o la invocación del grafo con integración de LangSmith.
+Lista priorizada de tareas pendientes y completadas, clasificadas por prioridad. Incluye trabajos futuros como `SharedMessagePool`, Human in the Loop, literales en el estado y segmentación de módulos por subgrafo.
 
-### `metamodelo.md`
-Esquema del metamodelo y explicación de qué es cada clase.
+### `comandosCheckpointDB.md`
+
+Referencia rápida de comandos `docker exec` para inspeccionar el estado de los checkpoints en los contenedores de LangGraph (MongoDB y PostgreSQL).
 
 ### `adr/` — Architecture Decision Records
 
-Registros de decisiones arquitectónicas relevantes tomadas durante el desarrollo. Cada ADR sigue la estructura contexto–decisión–consecuencias:
+Registros de decisiones arquitectónicas tomadas durante el desarrollo. Cada ADR sigue la estructura contexto–decisión–consecuencias:
 
-- **`001-compilacionUnificada.md`** — Justifica la unificación de `langium:generate` y `tsc` en un único comando `npm run build`, y la decisión de no aplicar `npm audit fix --force` para las vulnerabilidades de `lodash`.
-- **`002-summarize&mixReducer.md`** — Explica por qué el nodo de resumen de mensajes se genera pero no se conecta al grafo: el mecanismo solo tiene sentido en grafos cíclicos, y la posición es ambigua en grafos con múltiples estructuras de comunicación.
-- **`003-scopeProviderAttributes.md`** — Documenta la creación de un `ScopeProvider` personalizado en Langium para que las referencias `stateContext` y `stateUpdate` de los agentes puedan resolver los `Attribute` definidos dentro de `Environment`.
-- **`004-generadorEdges.md`** — Justifica la separación del generador de edges en un subdirectorio `generators/edges/` con un módulo por estructura de comunicación, anticipando el crecimiento por bifurcaciones y HumanInTheLoop.
+- **`001`** — Unificación de `langium:generate` y `tsc` en un único `npm run build`.
+- **`002`** — *(Deprecado, ver 011)* Posición del nodo summarize; descartado por ambigüedad en grafos multi-estructura.
+- **`003`** — `ScopeProvider` personalizado para resolver referencias `stateContext`/`stateUpdate` a `Attribute`.
+- **`004`** — Separación del generador de edges en módulos por estructura de comunicación.
+- **`005`** — Separación provider/model y catálogo de modelos extraído de la gramática hacia `models.ts`.
+- **`006`** — Eliminación de `EndPointTool` del metamodelo; las tools se referencian directamente por ID.
+- **`007`** — Granularidad por tool en `MCPServer` mediante el campo `tools` como lista de strings.
+- **`008`** — Fail-fast en la resolución de tools MCP al importar `mcpClients.py`.
+- **`009`** — `BaseModel` como tool y while-loop unificado para nodos con herramientas.
+- **`010`** — Estado compartido para subgrafos frente a estado independiente por subgrafo.
+- **`011`** — Posición y mecanismo definitivos del nodo Summarize: campo `summary` en el estado, no mensaje.
 
 ### `prototipos/` — Prototipos de validación del metamodelo
 
-Contiene los dos sistemas multiagente implementados manualmente para validar la expresividad del metamodelo antes de desarrollar el generador. Cada prototipo incluye el modelo `.mad`, el código Python implementado a mano y un informe de evaluación con las limitaciones detectadas:
+Sistemas multiagente implementados manualmente para validar la expresividad del metamodelo antes de desarrollar el generador. Cada prototipo incluye el modelo `.mad`, el código Python y un informe de evaluación:
 
-- **`research-assistant/`** — Asistente de investigación con cuatro agentes (organizador, investigador, redactor, validador) conectados mediante una estructura *centralized*, con herramientas MCP externas. Su informe (`research-assistant.md`) identificó limitaciones en flujo de control, gestión de herramientas, composición de estructuras y personalización de agentes.
-- **`cvReviewer/`** — Pipeline de evaluación de candidatos con cuatro agentes (extractor, evaluador, generador de informes, notificador) conectados mediante una estructura *layered*, con una herramienta Python local. Su informe (`cvReviewer.md`) reforzó la necesidad de mecanismos de interacción explícita entre agentes y estado compartido mediante *structured outputs*.
+- **`research-assistant/`** — Asistente de investigación con estructura *centralized* y herramientas MCP. Su informe identificó limitaciones en flujo de control, composición de estructuras y personalización de agentes.
+- **`cvReviewer/`** — Pipeline de evaluación de candidatos con estructura *layered* y herramienta Python local. Su informe reforzó la necesidad de estado compartido mediante *structured outputs*.
 
 ## Notas sobre dependencias
 

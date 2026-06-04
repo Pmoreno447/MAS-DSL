@@ -7,19 +7,19 @@
         persistence Postgre
     }
 
-    profile Searcher description
+    profile SearcherProfile description
     "
 Eres un agente de búsqueda. Usa las herramientas disponibles para buscar
 información relevante sobre lo que te pidan y responde con lo que encuentres.
     "
 
-    profile Formatter description
+    profile FormatterProfile description
     "
 Eres un agente de formateo. Usa la herramienta disponible para formatear
 el texto recibido y devuelve el resultado formateado.
     "
 
-    profile Responder description
+    profile ResponderProfile description
     "
 Eres un agente de respuesta final. A partir del historial de mensajes,
 sintetiza una respuesta clara y concisa.
@@ -37,45 +37,105 @@ sintetiza una respuesta clara y concisa.
     agent Searcher {
         provider openai
         model "gpt-5-nano"
-        profile Searcher
+        profile SearcherProfile
         tools Tavily
     }
 
     agent Formatter {
         provider openai
         model "gpt-5-nano"
-        profile Formatter
+        profile FormatterProfile
         tools prueba
     }
 
     agent Responder {
         provider openai
         model "gpt-5-nano"
-        profile Responder
+        profile ResponderProfile
+    }
+
+    agent Searcher2 {
+        provider openai
+        model "gpt-5-nano"
+        profile SearcherProfile
+        tools Tavily
+    }
+
+    agent Formatter2 {
+        provider openai
+        model "gpt-5-nano"
+        profile FormatterProfile
+        tools prueba
+    }
+
+    agent Responder2 {
+        provider openai
+        model "gpt-5-nano"
+        profile ResponderProfile
+    }
+
+    agent Searcher3 {
+        provider openai
+        model "gpt-5-nano"
+        profile SearcherProfile
+        tools Tavily
+    }
+
+    agent Formatter3 {
+        provider openai
+        model "gpt-5-nano"
+        profile FormatterProfile
+        tools prueba
+    }
+
+    agent Responder3 {
+        provider openai
+        model "gpt-5-nano"
+        profile ResponderProfile
+    }
+
+    agent Searcher4 {
+        provider openai
+        model "gpt-5-nano"
+        profile SearcherProfile
+        tools Tavily
+    }
+
+    agent Formatter4 {
+        provider openai
+        model "gpt-5-nano"
+        profile FormatterProfile
+        tools prueba
+    }
+
+    agent Responder4 {
+        provider openai
+        model "gpt-5-nano"
+        profile ResponderProfile
     }
 
     layered Pipeline1 {
-        layer ResponderLayer level 3 agent Responder
-        layer FormatterLayer level 2 next ResponderLayer agent Formatter
-        layer SearcherLayer level 1 next FormatterLayer agent Searcher
+        layer Responder
+        layer Formatter next Responder
+        layer Searcher next Formatter 
     }
 
     layered Pipeline2 {
-        layer ResponderLayer level 3 agent Responder
-        layer FormatterLayer level 2 next ResponderLayer agent Formatter
-        layer SearcherLayer level 1 next FormatterLayer agent Searcher
+        layer Responder2
+        layer Formatter2 next Responder2
+        layer Searcher2 next Formatter2
     }
 
     layered Pipeline3 {
-        layer ResponderLayer level 3 agent Responder
-        layer FormatterLayer level 2 next ResponderLayer agent Formatter
-        layer SearcherLayer level 1 next FormatterLayer agent Searcher
+        layer Responder3
+        layer Formatter3 next Responder3
+        layer Searcher3 next Formatter3
     }
 
     layered Pipeline4 {
-        layer ResponderLayer level 3 agent Responder
-        layer FormatterLayer level 2 next ResponderLayer agent Formatter
-        layer SearcherLayer level 1 next FormatterLayer agent Searcher
+        layer Responder4
+        layer Formatter4 next Responder4
+        layer Searcher4 next Formatter4
     }
 
     from START to Pipeline1
