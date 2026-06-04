@@ -710,8 +710,8 @@ class AgenteRestaOutput(BaseModel):
     result: int = Field(description="Resultado de la operación.")
 
 # Modelos
-modelAgenteSuma = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
-modelAgenteResta = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+modelAgenteSuma = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0).bind_tools([Suma, AgenteSumaOutput], tool_choice="any")
+modelAgenteResta = init_chat_model(model="google_genai:gemini-flash-latest", temperature=0).bind_tools([Resta, AgenteRestaOutput], tool_choice="any")
 
 _tools_by_name = {t.name: t for t in [Suma, Resta]}
 
@@ -1490,8 +1490,8 @@ class AgenteRestaOutput(BaseModel):
     result: int = Field(description="Resultado de la operación.")
 
 # Modelos
-modelAgenteSuma = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
-modelAgenteResta = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+modelAgenteSuma = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Suma, AgenteSumaOutput], tool_choice="any")
+modelAgenteResta = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Resta, AgenteRestaOutput], tool_choice="any")
 modelEscritor = init_chat_model(model="ollama:qwen2.5:7b", temperature=1, base_url=OLLAMA_BASE_URL)
 
 _tools_by_name = {t.name: t for t in [Suma, Resta]}
@@ -4597,7 +4597,7 @@ class AgenteProcesadorOutput(BaseModel):
     resultado: str = Field(description="Resultado procesado por la herramienta Python")
 
 # Modelos
-modelAgenteProcesador = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0).bind_tools([Procesador, AgenteProcesadorOutput], tool_choice="required")
+modelAgenteProcesador = init_chat_model(model="google_genai:gemini-2.5-flash", temperature=0).bind_tools([Procesador, AgenteProcesadorOutput], tool_choice="any")
 
 _tools_by_name = {t.name: t for t in [Procesador]}
 
@@ -4907,8 +4907,8 @@ class AgenteRestaOutput(BaseModel):
     result: int = Field(description="Resultado de la operación.")
 
 # Modelos
-modelAgenteSuma = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
-modelAgenteResta = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+modelAgenteSuma = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Suma, AgenteSumaOutput], tool_choice="any")
+modelAgenteResta = init_chat_model(model="ollama:qwen2.5:7b", temperature=0, base_url=OLLAMA_BASE_URL).bind_tools([Resta, AgenteRestaOutput], tool_choice="any")
 modelEscritor = init_chat_model(model="ollama:qwen2.5:7b", temperature=1, base_url=OLLAMA_BASE_URL)
 
 _tools_by_name = {t.name: t for t in [Suma, Resta]}
@@ -5271,8 +5271,8 @@ class AgenteRestaOutput(BaseModel):
     result: int = Field(description="Resultado de la operación.")
 
 # Modelos
-modelAgenteSuma = init_chat_model(model="openai:gpt-4o", temperature=0).bind_tools([Suma, AgenteSumaOutput], tool_choice="required")
-modelAgenteResta = init_chat_model(model="openai:gpt-4o", temperature=0).bind_tools([Resta, AgenteRestaOutput], tool_choice="required")
+modelAgenteSuma = init_chat_model(model="openai:gpt-4o", temperature=0).bind_tools([Suma, AgenteSumaOutput], tool_choice="any")
+modelAgenteResta = init_chat_model(model="openai:gpt-4o", temperature=0).bind_tools([Resta, AgenteRestaOutput], tool_choice="any")
 modelEscritor = init_chat_model(model="openai:gpt-4o", temperature=1)
 
 _tools_by_name = {t.name: t for t in [Suma, Resta]}

@@ -114,6 +114,18 @@
             "$0"
         ]
     },
+    "MCP DeepWiki": {
+        "prefix": "mcpServer",
+        "description": "Consulta documentación de repositorios de GitHub (DeepWiki, sin API key)",
+        "body": [
+            "mcpServer DeepWiki {",
+            "\turl \"https://mcp.deepwiki.com/mcp\"",
+            "\ttransport \"streamable_http\"",
+            "\ttools \"read_wiki_structure\", \"read_wiki_contents\", \"ask_question\"",
+            "}",
+            "$0"
+        ]
+    },
     "Transition": {
         "prefix": "transition",
         "description": "Transición entre estructuras de comunicación",
