@@ -16,7 +16,7 @@ class SearcherOutput(BaseModel):
     enlaces: str = Field(description="Campo donde guardar los enlaces consultados para obtener la información")
 
 # Modelos
-modelSearcher = init_chat_model(model="openai:gpt-4o-mini", temperature=0).bind_tools([tavily_search, tavily_extract, SearcherOutput], tool_choice="required")
+modelSearcher = init_chat_model(model="openai:gpt-4o-mini", temperature=0).bind_tools([tavily_search, tavily_extract, SearcherOutput], tool_choice="any")
 modelFormatter = init_chat_model(model="openai:gpt-4o-mini", temperature=0).bind_tools([prueba])
 modelResponder = init_chat_model(model="openai:gpt-4o-mini", temperature=0)
 

@@ -1,33 +1,4 @@
-{
-    context incidentResponse {
-        // Información de la alerta entrante
-        attribute alertId type string description "Identificador único de la alerta recibida del sistema de monitorización."
-        attribute alertDescription type string description "Descripción de la alerta tal como la emitió el sistema (Datadog, Prometheus, etc.)."
-        attribute affectedService type string description "Nombre del servicio afectado (ej: 'payment-api', 'user-db', 'frontend-web')."
-
-        // Resultado del triaje inicial
-        attribute severity type string description "Severidad evaluada: critical, high, medium o low."
-        attribute requiresImmediate type boolean description "True si la incidencia requiere escalado humano inmediato (severity critical o servicio crítico caído en producción)."
-
-        // Hallazgos del diagnóstico paralelo
-        attribute logsFindings type string description "Patrones de error, excepciones y eventos relevantes encontrados en los logs recientes."
-        attribute metricsFindings type string description "Anomalías detectadas en métricas de CPU, memoria, latencia, error rate, throughput."
-        attribute deploysFindings type string description "Deployments recientes en el servicio afectado y sus dependencias, con su correlación temporal con la incidencia."
-
-        // Síntesis y resolución
-        attribute rootCause type string description "Causa raíz identificada tras consolidar los hallazgos de los tres analistas."
-        attribute remediationPlan type string description "Plan de remediación propuesto, con pasos concretos y orden de ejecución."
-        attribute actionTaken type string description "Acción ejecutada por el sistema (rollback, restart, scale-up, etc.) o notificación enviada."
-        attribute pagerCreated type boolean description "True si se ha creado un incidente en PagerDuty para escalar a oncall humano."
-
-        maxMessages 15
-        persistence MongoDB
-    }
-
-    // ─── PROMPTS ──────────────────────────────────────────────────────────────
-
-    profile TriagerPrompt description
-    "
+TRIAGERPROMPT = """
 Eres el agente de triaje de un equipo de Site Reliability Engineering (SRE). Tu única responsabilidad es analizar la alerta entrante y evaluar su severidad inicial para decidir el flujo de respuesta.
 
 A partir del mensaje recibido, rellena tres campos del estado:
@@ -47,10 +18,9 @@ A partir del mensaje recibido, rellena tres campos del estado:
 En cualquier otro caso, marca False.
 
 No diagnostiques ni propongas soluciones. Solo tría.
-    "
+"""
 
-    profile LogAnalystPrompt description
-    "
+LOGANALYSTPROMPT = """
 Eres un analista de logs en un equipo SRE. Tu única responsabilidad es analizar los logs recientes del servicio afectado para identificar patrones de error.
 
 Flujo de trabajo:
@@ -69,10 +39,9 @@ Formas parte de un equipo de diagnóstico de tres analistas (logs, métricas, de
 - Si `metricsFindings` está vacío, transfiere el control a MetricsAnalyst.
 - Si `metricsFindings` ya está relleno pero `deploysFindings` está vacío, transfiere el control a DeployAnalyst.
 - Si tanto `metricsFindings` como `deploysFindings` ya están rellenos, el diagnóstico está completo: responde FINISH para pasar a la fase de síntesis y resolución.
-    "
+"""
 
-    profile MetricsAnalystPrompt description
-    "
+METRICSANALYSTPROMPT = """
 Eres un analista de métricas en un equipo SRE. Tu única responsabilidad es analizar las métricas del servicio afectado para identificar anomalías.
 
 Flujo de trabajo:
@@ -90,10 +59,9 @@ Formas parte de un equipo de diagnóstico de tres analistas (logs, métricas, de
 - Si `logsFindings` está vacío, transfiere el control a LogAnalyst.
 - Si `logsFindings` ya está relleno pero `deploysFindings` está vacío, transfiere el control a DeployAnalyst.
 - Si tanto `logsFindings` como `deploysFindings` ya están rellenos, el diagnóstico está completo: responde FINISH para pasar a la fase de síntesis y resolución.
-    "
+"""
 
-    profile DeployAnalystPrompt description
-    "
+DEPLOYANALYSTPROMPT = """
 Eres un analista de despliegues en un equipo SRE. Tu única responsabilidad es revisar los deployments recientes para identificar correlaciones con la incidencia.
 
 Flujo de trabajo:
@@ -111,10 +79,9 @@ Formas parte de un equipo de diagnóstico de tres analistas (logs, métricas, de
 - Si `logsFindings` está vacío, transfiere el control a LogAnalyst.
 - Si `logsFindings` ya está relleno pero `metricsFindings` está vacío, transfiere el control a MetricsAnalyst.
 - Si tanto `logsFindings` como `metricsFindings` ya están rellenos, el diagnóstico está completo: responde FINISH para pasar a la fase de síntesis y resolución.
-    "
+"""
 
-    profile RootCauseSynthesizerPrompt description
-    "
+ROOTCAUSESYNTHESIZERPROMPT = """
 Eres un ingeniero senior SRE responsable de la síntesis del diagnóstico. A partir de los hallazgos de los tres analistas (logs, métricas, deploys), determina la causa raíz más probable y propón un plan de remediación.
 
 A partir de `logsFindings`, `metricsFindings` y `deploysFindings`, rellena:
@@ -131,10 +98,9 @@ A partir de `logsFindings`, `metricsFindings` y `deploysFindings`, rellena:
    - Riesgo de la acción (bajo / medio / alto).
 
 Regla crítica: si la confianza en la causa raíz es BAJA o el riesgo de las acciones es ALTO, indícalo explícitamente para que el Remediator escale a humano antes de actuar.
-    "
+"""
 
-    profile RemediatorPrompt description
-    "
+REMEDIATORPROMPT = """
 Eres el agente de remediación automática. Tu responsabilidad es ejecutar el plan de remediación propuesto en `remediationPlan` usando las herramientas disponibles.
 
 HERRAMIENTAS:
@@ -151,10 +117,9 @@ REGLAS ESTRICTAS:
 5. Al terminar (con éxito o fallo), llama SIEMPRE a `notifyChannel` con un resumen claro de lo ejecutado.
 
 Rellena `actionTaken` con la descripción de las acciones efectivamente ejecutadas y su resultado.
-    "
+"""
 
-    profile EscalatorPrompt description
-    "
+ESCALATORPROMPT = """
 Eres el agente de escalado a oncall humano. Tu responsabilidad es crear una incidencia en PagerDuty y notificar al canal de guardia cuando la severidad lo requiere.
 
 A partir de `severity`, `alertDescription`, `affectedService` y los hallazgos disponibles, redacta un mensaje conciso y técnico para el ingeniero de guardia.
@@ -165,126 +130,5 @@ Flujo:
 3. Rellena `actionTaken` indicando que se ha escalado a oncall humano, con la URL del incidente.
 
 El mensaje al oncall debe contener: servicio afectado, severidad, descripción del problema, hallazgos preliminares (si los hay), y la hora estimada de inicio del problema. Sé directo. El oncall valora la concisión.
-    "
+"""
 
-    // ─── HERRAMIENTAS ──────────────────────────────────────────────────────────
-
-    pythonTool getRecentLogs modulePath "ops"
-    pythonTool getServiceMetrics modulePath "ops"
-    pythonTool getRecentDeployments modulePath "ops"
-    pythonTool rollbackDeployment modulePath "ops"
-    pythonTool restartService modulePath "ops"
-    pythonTool scaleService modulePath "ops"
-    pythonTool createPagerDutyIncident modulePath "ops"
-    pythonTool notifyChannel modulePath "ops"
-
-    // ─── AGENTES ───────────────────────────────────────────────────────────────
-
-    agent Triager {
-        provider openai
-        model "gpt-5-nano"
-        profile TriagerPrompt
-        description "Agente de triaje inicial de alertas."
-        stateContext alertDescription
-        stateUpdate affectedService, severity, requiresImmediate
-    }
-
-    agent LogAnalyst {
-        provider anthropic
-        model "claude-sonnet-4-6"
-        profile LogAnalystPrompt
-        description "Analista de logs del servicio afectado."
-        stateContext affectedService, logsFindings, metricsFindings, deploysFindings
-        stateUpdate logsFindings
-        timeOut 45
-        tools getRecentLogs
-    }
-
-    agent MetricsAnalyst {
-        provider anthropic
-        model "claude-sonnet-4-6"
-        profile MetricsAnalystPrompt
-        description "Analista de métricas del servicio afectado."
-        stateContext affectedService, logsFindings, metricsFindings, deploysFindings
-        stateUpdate metricsFindings
-        timeOut 45
-        tools getServiceMetrics
-    }
-
-    agent DeployAnalyst {
-        provider anthropic
-        model "claude-sonnet-4-6"
-        profile DeployAnalystPrompt
-        description "Analista de despliegues recientes correlacionados con la incidencia."
-        stateContext affectedService, logsFindings, metricsFindings, deploysFindings
-        stateUpdate deploysFindings
-        timeOut 45
-        tools getRecentDeployments
-    }
-
-    agent RootCauseSynthesizer {
-        provider anthropic
-        model "claude-sonnet-4-6"
-        profile RootCauseSynthesizerPrompt
-        description "Síntesis de los hallazgos y propuesta de plan de remediación."
-        stateContext logsFindings, metricsFindings, deploysFindings, alertDescription
-        stateUpdate rootCause, remediationPlan
-    }
-
-    agent Remediator {
-        provider anthropic
-        model "claude-sonnet-4-6"
-        profile RemediatorPrompt
-        description "Ejecutor automatizado del plan de remediación."
-        stateContext rootCause, remediationPlan, affectedService
-        stateUpdate actionTaken
-        maxRetries 2
-        tools rollbackDeployment, restartService, scaleService, notifyChannel
-    }
-
-    agent Escalator {
-        provider openai
-        model "gpt-5-nano"
-        profile EscalatorPrompt
-        description "Escalador a oncall humano vía PagerDuty."
-        stateContext severity, alertDescription, affectedService
-        stateUpdate pagerCreated, actionTaken
-        tools createPagerDutyIncident, notifyChannel
-    }
-
-    summarizer IncidentSummarizer {
-        provider anthropic
-        model "claude-haiku-4-5"
-        tokenTrigger 4000
-    }
-
-    // ─── ESTRUCTURAS DE COMUNICACIÓN ───────────────────────────────────────────
-
-    layered InitialTriage {
-        layer Triager
-    }
-
-    // Diagnóstico colaborativo: los tres analistas se pasan el control entre sí (cada uno
-    // decide a quién delegar según qué análisis falten) hasta completar el diagnóstico.
-    decentralized ParallelDiagnosis {
-        agents LogAnalyst, MetricsAnalyst, DeployAnalyst
-    }
-
-    layered AutomaticResolution {
-        layer RootCauseSynthesizer next Remediator
-        layer Remediator
-    }
-
-    layered EmergencyEscalation {
-        layer Escalator
-    }
-
-    // ─── FLUJO ─────────────────────────────────────────────────────────────────
-
-    from START to InitialTriage
-    from InitialTriage to EmergencyEscalation when requiresImmediate equal True
-    from InitialTriage to ParallelDiagnosis when requiresImmediate equal False
-    from ParallelDiagnosis to AutomaticResolution
-    from AutomaticResolution to END
-    from EmergencyEscalation to END
-}

@@ -52,13 +52,13 @@ class GeneralHelperOutput(BaseModel):
     decision: str = Field(description="Decisión tomada para resolver el pedido")
 
 # Modelos
-modelValidator = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([orderChecker, ValidatorOutput], tool_choice="required")
-modelInfoExtractor = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([getInfoOrder, InfoExtractorOutput], tool_choice="required")
+modelValidator = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([orderChecker, ValidatorOutput], tool_choice="any")
+modelInfoExtractor = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([getInfoOrder, InfoExtractorOutput], tool_choice="any")
 modelAnswerWriterNode = init_chat_model(model="openai:gpt-5-nano", temperature=0)
-modelShippingHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([reopenShipmentCase, requestDuplicateShipment, ShippingHelperOutput], tool_choice="required")
-modelPaymentHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([requestRefund, applyDiscount, PaymentHelperOutput], tool_choice="required")
-modelProductHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([requestReplacement, requestReturn, getDeliveryEstimate, ProductHelperOutput], tool_choice="required")
-modelGeneralHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([getDeliveryEstimate, GeneralHelperOutput], tool_choice="required")
+modelShippingHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([reopenShipmentCase, requestDuplicateShipment, ShippingHelperOutput], tool_choice="any")
+modelPaymentHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([requestRefund, applyDiscount, PaymentHelperOutput], tool_choice="any")
+modelProductHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([requestReplacement, requestReturn, getDeliveryEstimate, ProductHelperOutput], tool_choice="any")
+modelGeneralHelper = init_chat_model(model="openai:gpt-5-nano", temperature=0).bind_tools([getDeliveryEstimate, GeneralHelperOutput], tool_choice="any")
 
 _tools_by_name = {t.name: t for t in [orderChecker, getInfoOrder, reopenShipmentCase, requestDuplicateShipment, requestRefund, applyDiscount, requestReplacement, requestReturn, getDeliveryEstimate]}
 

@@ -1,0 +1,13 @@
+langchain
+langchain-anthropic
+langchain-core
+langchain-openai
+langgraph
+langgraph-checkpoint-mongodb
+langgraph-cli[inmem]
+langsmith
+pydantic
+pymongo
+python-dotenv
+tiktoken
+typing-extensions

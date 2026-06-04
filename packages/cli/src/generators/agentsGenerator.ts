@@ -105,7 +105,7 @@ function generateModel(agent: Agent, model: LLMMultiAgentSystem): string {
     // se bindea como una tool más. El modelo lo invoca cuando ha "terminado"
     // y el while-loop del nodo extrae los args como salida estructurada.
     if (hasTools && hasStructured) {
-        line += `.bind_tools([${[...toolNames, className].join(', ')}], tool_choice="required")`;
+        line += `.bind_tools([${[...toolNames, className].join(', ')}], tool_choice="any")`;
     } else if (hasTools) {
         line += `.bind_tools([${toolNames.join(', ')}])`;
     } else if (hasStructured) {
@@ -187,9 +187,17 @@ ${statusLine}    result = ${modelName}.invoke(
                 `                    "${ref.ref!.name}": tc["args"]["${ref.ref!.name}"]`
               ).join(',\n')
             : '';
+        // El schema-como-tool se invoca pero no se ejecuta como herramienta, así que
+        // su `tool_use` no tiene `tool_result`. Propagar el `response` crudo dejaría ese
+        // `tool_use` huérfano en state["messages"] y Anthropic lo rechaza en el siguiente
+        // nodo. Volcamos un AIMessage de texto limpio (identificado con name) en su lugar.
+        const cleanMessageContent = hasStateUpdate
+            ? `tc["args"]["${agent.stateUpdate![0].ref!.name}"]`
+            : '""';
+        const cleanMessage = `AIMessage(content=${cleanMessageContent}, name="${agent.name.toLowerCase()}")`;
         const updateBody = hasStateUpdate
-            ? `{\n                    "messages": [response],\n${stateUpdateExtraction}\n                }`
-            : `{"messages": [response]}`;
+            ? `{\n                    "messages": [${cleanMessage}],\n${stateUpdateExtraction}\n                }`
+            : `{"messages": [${cleanMessage}]}`;
 
         return `async def ${nodeName}(state: State)${returnAnnotation}:
     """${description}"""
