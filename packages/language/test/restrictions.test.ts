@@ -40,7 +40,6 @@ async function validar(modelo: string): Promise<string[]> {
  * @param modeloInvalido   modelo que DEBE disparar el error
  * @param modeloValido     modelo que NO debe dispararlo (por defecto MODELO_BASE)
  * 
- * Sé que esta abstracción parece un poco tonta pero me aburre escribir tests.
  */
 function testRestriccion(
     codigo: string,
