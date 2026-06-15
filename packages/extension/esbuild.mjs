@@ -32,12 +32,7 @@ const ctx = await esbuild.context({
     outdir: 'out',
     bundle: true,
     target: "ES2017",
-    // VSCode's extension host is still using cjs, so we need to transform the code
     format: 'cjs',
-    // To prevent confusing node, we explicitly use the `.cjs` extension
-    outExtension: {
-        '.js': '.cjs'
-    },
     loader: { '.ts': 'ts' },
     external: ['vscode'],
     platform: 'node',

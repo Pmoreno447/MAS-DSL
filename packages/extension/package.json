@@ -1,7 +1,7 @@
 {
     "name": "vscode-multiagentdsl",
     "description": "DSL para definir sistemas multi-agente con IA. Genera código LangGraph listo para ejecutar con soporte de persistencia y despliegue Docker.",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "displayName": "multiAgentDSL",
     "publisher": "pmorenoc",
     "license": "MIT",
@@ -18,7 +18,6 @@
         "DSL",
         "agent"
     ],
-    "type": "module",
     "engines": {
         "vscode": "^1.67.0"
     },
@@ -111,7 +110,7 @@
         "onCommand:multi-agent-dsl.generate",
         "onCommand:multi-agent-dsl.preview"
     ],
-    "main": "./out/extension/main.cjs",
+    "main": "./out/extension/main.js",
     "scripts": {
         "clean": "shx rm -fr *.tsbuildinfo out syntaxes",
         "vscode:prepublish": "npm run build",

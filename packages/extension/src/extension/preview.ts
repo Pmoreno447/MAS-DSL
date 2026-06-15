@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import * as fs from 'node:fs';
 import { URI } from 'langium';
 import { NodeFileSystem } from 'langium/node';
 import type { LLMMultiAgentSystem, MultiAgentDslServices } from 'multi-agent-dsl-language';
@@ -53,7 +52,7 @@ async function generateMarkdown(document: vscode.TextDocument): Promise<void> {
     log('Diagrama generado:\n' + diagram);
     const md = `# Diagrama: ${path.basename(document.fileName)}\n\n` +
         '```mermaid\n' + diagram + '\n```\n';
-    fs.writeFileSync(MD_PATH, md, 'utf8');
+    await vscode.workspace.fs.writeFile(vscode.Uri.file(MD_PATH), Buffer.from(md, 'utf8'));
     log('Markdown escrito en ' + MD_PATH);
 }
 
@@ -79,7 +78,7 @@ export async function previewCommand(_context: vscode.ExtensionContext): Promise
 export function registerPreviewRefresh(_context: vscode.ExtensionContext): vscode.Disposable {
     return vscode.workspace.onDidSaveTextDocument(async document => {
         if (document.languageId !== 'multi-agent-dsl') return;
-        if (!fs.existsSync(MD_PATH)) return;
+        try { await vscode.workspace.fs.stat(vscode.Uri.file(MD_PATH)); } catch { return; }
         try {
             await generateMarkdown(document);
         } catch (e) {
